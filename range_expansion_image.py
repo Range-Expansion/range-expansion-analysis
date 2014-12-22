@@ -32,6 +32,27 @@ class Range_Expansion_Experiment():
         for cur_tif_path in self.tif_paths:
             self.bioformats_xml_list.append(Bioformats_XML(cur_tif_path))
 
+
+    def get_circle_mask(self, i):
+        path = self.circle_folder + self.image_names[i]
+        return ski.io.imread(path, plugin='tifffile')
+
+    def get_edges_mask(self, i):
+        path = self.edges_folder + self.image_names[i]
+        return ski.io.imread(path, plugin='tifffile')
+
+    def get_doctored_edges_mask(self, i):
+        path = self.doctored_edges_folder + self.image_names[i]
+        return ski.io.imread(path, plugin='tifffile')
+
+    def get_channels_mask(self, i):
+        path = self.masks_folder + self.image_names[i]
+        return ski.io.imread(path, plugin='tifffile')
+
+    def get_image(self, i):
+        path = self.tif_folder + self.image_names[i]
+        return ski.io.imread(path, plugin='tifffile')
+
 class Bioformats_XML():
     def __init__(self, path):
         self.path = path
