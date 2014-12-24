@@ -65,6 +65,7 @@ class Range_Expansion_Experiment():
 
         # Now divide each channel by the sum
         fractions = channel_masks / sum_mask.astype(np.float)
+        fractions[np.isnan(fractions)] = 0
         return fractions
 
     def get_image(self, i):
