@@ -39,23 +39,38 @@ class Range_Expansion_Experiment():
 
     def get_circle_mask(self, i):
         path = self.circle_folder + self.image_names[i]
-        return ski.io.imread(path, plugin='tifffile')
+        image = ski.io.imread(path, plugin='tifffile')
+        return image > 0
 
     def get_edges_mask(self, i):
         path = self.edges_folder + self.image_names[i]
-        return ski.io.imread(path, plugin='tifffile')
+        image = ski.io.imread(path, plugin='tifffile')
+        return image > 0
 
     def get_doctored_edges_mask(self, i):
         path = self.doctored_edges_folder + self.image_names[i]
-        return ski.io.imread(path, plugin='tifffile')
+        image = ski.io.imread(path, plugin='tifffile')
+        return image > 0
 
     def get_channels_mask(self, i):
         path = self.masks_folder + self.image_names[i]
-        return ski.io.imread(path, plugin='tifffile')
+        image = ski.io.imread(path, plugin='tifffile')
+        return image > 0
+
+    def get_color_fractions(self, i):
+        channel_masks = self.get_channels_mask(i)
+        sum_mask = np.zeros((channel_masks.shape[1], channel_masks.shape[2]))
+        for i in range(channel_masks.shape[0]):
+            sum_mask += channel_masks[i, :, :]
+
+        # Now divide each channel by the sum
+        fractions = channel_masks / sum_mask.astype(np.float)
+        return fractions
 
     def get_image(self, i):
         path = self.tif_folder + self.image_names[i]
-        return ski.io.imread(path, plugin='tifffile')
+        image = ski.io.imread(path, plugin='tifffile')
+        return image > 0
 
     def get_center(self, i):
         '''Returns the mean center as the standard error of the mean'''
