@@ -1,11 +1,15 @@
 __author__ = 'bryan'
 import skimage as ski
 import skimage.io
+import skimage.measure
 import matplotlib.pyplot as plt
 import tifffile as ti
 import xml.etree.ElementTree as ET
 import glob
 import os
+import pandas as pd
+import numpy as np
+import scipy as sp
 
 class Range_Expansion_Experiment():
     def __init__(self, base_folder):
@@ -52,6 +56,24 @@ class Range_Expansion_Experiment():
     def get_image(self, i):
         path = self.tif_folder + self.image_names[i]
         return ski.io.imread(path, plugin='tifffile')
+
+    def get_center(self, i):
+        '''Returns the mean center as the standard error of the mean'''
+        center_list = []
+        circles = self.get_circle_mask(i)
+        for i in range(circles.shape[0]):
+            cur_image = circles[i, :, :]
+            label_image = ski.measure.label(cur_image, neighbors=8)
+            props = ski.measure.regionprops(label_image)
+            for p in props:
+                # There should only be one property
+                center_list.append(p['centroid'])
+        center_list = np.asarray(center_list)
+        center_df = pd.DataFrame(data = center_list, columns=('x', 'y'))
+        av_center = center_df.mean()
+        std_err = center_df.apply(lambda x: sp.stats.sem(x, ddof=2))
+
+        return av_center, std_err
 
 class Bioformats_XML():
     def __init__(self, path):
