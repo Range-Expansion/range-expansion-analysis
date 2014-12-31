@@ -85,7 +85,7 @@ class Range_Expansion_Experiment():
                 # There should only be one property
                 center_list.append(p['centroid'])
         center_list = np.asarray(center_list)
-        center_df = pd.DataFrame(data = center_list, columns=('x', 'y'))
+        center_df = pd.DataFrame(data = center_list, columns=('r', 'c'))
         av_center = center_df.mean()
         std_err = center_df.apply(lambda x: sp.stats.sem(x, ddof=2))
 
