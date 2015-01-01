@@ -91,6 +91,30 @@ class Range_Expansion_Experiment():
 
         return av_center, std_err
 
+    def get_circ_frac_df(self, i):
+        frac = self.get_color_fractions(i)
+        rows = np.arange(0, frac.shape[0])
+        columns = np.arange(0, frac.shape[1])
+        rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
+
+        r_ravel = rmesh.ravel()
+        c_ravel = cmesh.ravel()
+        test_ravel = frac.ravel()
+
+        av_center, std_err = self.get_center(i)
+
+        df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel, 'f': test_ravel})
+        df['delta_r'] = df['r'] - av_center['r']
+        df['delta_c'] = df['c'] - av_center['c']
+        df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
+        df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
+
+        max_r_ceil = np.ceil(df['radius'].max())
+        bins = np.arange(0, max_r_ceil+ 2 , 1.5)
+        groups = df.groupby(pd.cut(df.radius, bins))
+        mean_groups = groups.agg(['mean'])
+        return mean_groups
+
 class Bioformats_XML():
     def __init__(self, path):
         self.path = path
