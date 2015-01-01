@@ -123,7 +123,7 @@ class Range_Expansion_Experiment():
             df_list.append(df)
         return df_list
 
-    def bin_circ_frac_df(self, df):
+    def bin_image_coordinate_df(self, df):
         max_r_ceil = np.ceil(df['radius'].max())
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
         groups = df.groupby(pd.cut(df.radius, bins))
