@@ -123,12 +123,12 @@ class Range_Expansion_Experiment():
             df_list.append(df)
         return df_list
 
-    def bin_image_coordinate_df(self, df):
+    def bin_image_coordinate_r_df(self, df):
         max_r_ceil = np.ceil(df['radius'].max())
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
         groups = df.groupby(pd.cut(df.radius, bins))
         mean_groups = groups.agg(['mean'])
-        return mean_groups
+        return mean_groups, bins
 
     def get_local_hetero_mask(self, i):
         fractions = self.get_color_fractions(i)
