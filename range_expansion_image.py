@@ -91,26 +91,35 @@ class Range_Expansion_Experiment():
 
         return av_center, std_err
 
-    def get_circ_frac_df(self, i):
+    def get_image_coordinate_df(self, i):
+        '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
+        as the origin.'''
+        image = self.get_image(i)
+        rows = np.arange(0, image.shape[1])
+        columns = np.arange(0, image.shape[2])
+        rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
+
+        r_ravel = rmesh.ravel()
+        c_ravel = cmesh.ravel()
+
+        df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel})
+
+        av_center, std_err = self.get_center(i)
+        df['delta_r'] = df['r'] - av_center['r']
+        df['delta_c'] = df['c'] - av_center['c']
+        df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
+        df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
+
+        return df
+
+    def get_channel_frac_df(self, i):
         all_fractions = self.get_color_fractions(i)
+        image_coordinates = self.get_image_coordinate_df(i)
+
         df_list = []
         for frac in all_fractions:
-            rows = np.arange(0, frac.shape[0])
-            columns = np.arange(0, frac.shape[1])
-            rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
-
-            r_ravel = rmesh.ravel()
-            c_ravel = cmesh.ravel()
-            test_ravel = frac.ravel()
-
-            av_center, std_err = self.get_center(i)
-
-            df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel, 'f': test_ravel})
-            df['delta_r'] = df['r'] - av_center['r']
-            df['delta_c'] = df['c'] - av_center['c']
-            df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
-            df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
-
+            df = image_coordinates.copy()
+            df['f'] = frac.ravel()
             df_list.append(df)
         return df_list
 
