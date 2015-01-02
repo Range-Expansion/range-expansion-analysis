@@ -130,6 +130,31 @@ class Range_Expansion_Experiment():
         mean_groups = groups.agg(['mean'])
         return mean_groups, bins
 
+    def bin_theta_at_r_df(self, i, r):
+
+        theta_df_list = []
+
+        fractions = self.get_channel_frac(i)
+
+        delta_x = 1.5
+        delta_theta = delta_x / float(r)
+        for frac in fractions:
+            frac_binned, bins = self.bin_image_coordinate_r_df(frac)
+            r_spacing = bins[1] - bins[0]
+            r_index = np.ceil(r / r_spacing)
+            if np.mod(r_index, 1) == 0:
+                r_index -= 1
+            r_index = int(r_index)
+
+            theta_df = frac.iloc[r_index]
+            theta_bins = np.arange(-np.pi - .01*delta_theta, np.pi + 1.01*delta_theta, delta_theta)
+
+            theta_cut = pd.cut(frac['theta'], theta_bins)
+            groups = frac.groupby(theta_cut)
+            mean_df = groups.agg(['mean'])
+            theta_df_list.append(mean_df)
+        return theta_df_list
+
     def get_local_hetero_mask(self, i):
         fractions = self.get_color_fractions(i)
         local_hetero_mask = np.zeros((fractions.shape[1], fractions.shape[2]))
