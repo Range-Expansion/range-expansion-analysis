@@ -141,16 +141,10 @@ class Range_Expansion_Experiment():
         theta_bins = np.arange(-np.pi - .01*delta_theta, np.pi + 1.01*delta_theta, delta_theta)
 
         for frac in fractions:
-            frac_binned, bins = self.bin_image_coordinate_r_df(frac)
-            r_spacing = bins[1] - bins[0]
-            r_index = np.ceil(r / r_spacing)
-            if np.mod(r_index, 1) == 0:
-                r_index -= 1
-            r_index = int(r_index)
+            # First get the theta at the desired r; r should be an int
+            theta_df = frac[(frac['radius'] >= r - delta_x/2.) & (frac['radius'] < r + delta_x/2.)]
 
-            theta_df = frac.iloc[r_index]
-
-            theta_cut = pd.cut(frac['theta'], theta_bins)
+            theta_cut = pd.cut(theta_df['theta'], theta_bins)
             groups = theta_df.groupby(theta_cut)
             mean_df = groups.agg(['mean'])
             theta_df_list.append(mean_df)
