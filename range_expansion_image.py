@@ -150,8 +150,10 @@ class Range_Expansion_Experiment():
             theta_df_list.append(mean_df)
         return theta_df_list, theta_bins
 
-    def delta_theta_convolve_df(self, theta_df, delta_theta):
-        print 'waka'
+    def delta_theta_convolve_df(self, i, r, delta_theta):
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(i, r)
+        # Now determine how many indices away you need to grab to properly do the convolution
+
 
     def get_local_hetero_mask(self, i):
         fractions = self.get_color_fractions(i)
