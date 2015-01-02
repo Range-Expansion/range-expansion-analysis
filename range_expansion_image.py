@@ -134,7 +134,7 @@ class Range_Expansion_Experiment():
 
         theta_df_list = []
 
-        fractions = self.get_channel_frac(i)
+        fractions = self.get_channel_frac_df(i)
 
         delta_x = 1.5
         delta_theta = delta_x / float(r)
