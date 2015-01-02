@@ -138,6 +138,8 @@ class Range_Expansion_Experiment():
 
         delta_x = 1.5
         delta_theta = delta_x / float(r)
+        theta_bins = np.arange(-np.pi - .01*delta_theta, np.pi + 1.01*delta_theta, delta_theta)
+
         for frac in fractions:
             frac_binned, bins = self.bin_image_coordinate_r_df(frac)
             r_spacing = bins[1] - bins[0]
@@ -147,13 +149,15 @@ class Range_Expansion_Experiment():
             r_index = int(r_index)
 
             theta_df = frac.iloc[r_index]
-            theta_bins = np.arange(-np.pi - .01*delta_theta, np.pi + 1.01*delta_theta, delta_theta)
 
             theta_cut = pd.cut(frac['theta'], theta_bins)
-            groups = frac.groupby(theta_cut)
+            groups = theta_df.groupby(theta_cut)
             mean_df = groups.agg(['mean'])
             theta_df_list.append(mean_df)
-        return theta_df_list
+        return theta_df_list, theta_bins
+
+    def delta_theta_convolve_df(self, theta_df, delta_theta):
+        print 'waka'
 
     def get_local_hetero_mask(self, i):
         fractions = self.get_color_fractions(i)
