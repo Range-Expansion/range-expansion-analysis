@@ -176,7 +176,8 @@ class Range_Expansion_Experiment():
             f_values = cur_theta_df['f'].values.flatten()
             F = np.fft.fft(f_values)
             fourier_product = F*K
-            convolution = np.real_if_close(np.fft.ifft(fourier_product))
+            # The imaginary part is zero within numerical error.
+            convolution = np.real(np.fft.ifft(fourier_product))
             conv_list.append(convolution)
 
         # Return the updated lists
@@ -184,7 +185,7 @@ class Range_Expansion_Experiment():
         count = 0
         for cur_theta_df in theta_df_list:
             new_df = cur_theta_df.drop('f', 1)
-            new_df['delta_theta_convolve'] = conv_list[count]
+            new_df['f', 'mean'] = conv_list[count]
             new_df_list.append(new_df)
 
             count += 1
@@ -203,19 +204,19 @@ class Range_Expansion_Experiment():
 
     def get_nonlocal_hetero_df(self, i, r, delta_theta):
         # Get DF evaluated at different points
-        convolve_list = self.delta_theta_convolve(i, r, delta_theta)
+        convolve_list = self.delta_theta_convolve_df(i, r, delta_theta)
         # Get local DF
         theta_df_list, theta_bins = self.bin_theta_at_r_df(i, r)
 
-        # Calculate the heterozygosity6
+        # Calculate the heterozygosity
         nonlocal_hetero = np.zeros(convolve_list[0].shape[0])
 
         for j in range(len(convolve_list)):
             result = theta_df_list[j]['f']*(1-convolve_list[j]['f'])
-            nonlocal_hetero += result
+            nonlocal_hetero += result.values.flatten()
 
-        hetero_df = self.get_image_coordinate_df(i)
-        hetero_df['h'] = nonlocal_hetero
+        hetero_df = theta_df_list[0].drop('f', 1)
+        hetero_df['h', 'mean'] = nonlocal_hetero
         return hetero_df
 
     def get_local_hetero_mask(self, i):
