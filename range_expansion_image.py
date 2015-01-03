@@ -153,7 +153,70 @@ class Range_Expansion_Experiment():
     def delta_theta_convolve_df(self, i, r, delta_theta):
         theta_df_list, theta_bins = self.bin_theta_at_r_df(i, r)
         # Now determine how many indices away you need to grab to properly do the convolution
+        theta_spacing = theta_bins[1] - theta_bins[0]
+        theta_index = np.ceil(delta_theta / theta_spacing)
+        if np.mod(theta_index, 1) == 0:
+            theta_index -= 1
+        theta_index = int(theta_index)
 
+        mid_index = theta_df_list[0].shape[0]/2
+
+        neg_index = mid_index - theta_index
+        pos_index = mid_index + theta_index
+
+        # Create the kernel
+        kernel = np.zeros(theta_df_list[0].shape[0])
+        kernel[neg_index] = 0.5
+        kernel[pos_index] = 0.5
+        K = np.fft.fft(kernel)
+
+        # Grab the desired f values
+        conv_list = []
+        for cur_theta_df in theta_df_list:
+            f_values = cur_theta_df['f'].values.flatten()
+            F = np.fft.fft(f_values)
+            fourier_product = F*K
+            convolution = np.real_if_close(np.fft.ifft(fourier_product))
+            conv_list.append(convolution)
+
+        # Return the updated lists
+        new_df_list = []
+        count = 0
+        for cur_theta_df in theta_df_list:
+            new_df = cur_theta_df.drop('f', 1)
+            new_df['delta_theta_convolve'] = conv_list[count]
+            new_df_list.append(new_df)
+
+            count += 1
+        return new_df_list
+
+    def get_local_hetero_df(self, i):
+        df_list = self.get_channel_frac_df(i)
+        local_hetero = np.zeros(df_list[0].shape[0])
+
+        for j in range(len(df_list)):
+            result = df_list[j]['f']*(1-df_list[j]['f'])
+            local_hetero += result
+        hetero_df = self.get_image_coordinate_df(i)
+        hetero_df['h'] = local_hetero
+        return hetero_df
+
+    def get_nonlocal_hetero_df(self, i, r, delta_theta):
+        # Get DF evaluated at different points
+        convolve_list = self.delta_theta_convolve(i, r, delta_theta)
+        # Get local DF
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(i, r)
+
+        # Calculate the heterozygosity6
+        nonlocal_hetero = np.zeros(convolve_list[0].shape[0])
+
+        for j in range(len(convolve_list)):
+            result = theta_df_list[j]['f']*(1-convolve_list[j]['f'])
+            nonlocal_hetero += result
+
+        hetero_df = self.get_image_coordinate_df(i)
+        hetero_df['h'] = nonlocal_hetero
+        return hetero_df
 
     def get_local_hetero_mask(self, i):
         fractions = self.get_color_fractions(i)
