@@ -13,72 +13,88 @@ import scipy as sp
 
 class Range_Expansion_Experiment():
     def __init__(self, base_folder):
-        self.circle_folder = base_folder + 'circle_radius/'
-        self.edges_folder = base_folder + 'edges/'
-        self.doctored_edges_folder = base_folder + 'edges_doctored/'
-        self.masks_folder = base_folder + 'masks/'
-        self.tif_folder = base_folder + 'tif/'
+        self.path_dict = {}
+        self.path_dict['circle_folder'] = base_folder + 'circle_radius/'
+        self.path_dict['edges_folder'] = base_folder + 'edges/'
+        self.path_dict['doctored_edges_folder'] = base_folder + 'edges_doctored/'
+        self.path_dict['masks_folder'] = base_folder + 'masks/'
+        self.path_dict['tif_folder'] = base_folder + 'tif/'
 
-        self.tif_paths = None
-        self.image_names = None
-
-        self.bioformats_xml_list = None
+        self.image_set_list = None
 
         self.finish_setup()
 
     def finish_setup(self):
         # Get a list of all images
-        self.tif_paths = glob.glob(self.tif_folder + '*.ome.tif')
-        self.image_names = [os.path.basename(z) for z in self.tif_paths]
-        self.image_names.sort()
-        # For each image, setup the xml
-        self.bioformats_xml_list = []
-        for cur_tif_path in self.tif_paths:
-            self.bioformats_xml_list.append(Bioformats_XML(cur_tif_path))
+        tif_paths = glob.glob(self.path_dict['tif_folder'] + '*.ome.tif')
+        tif_paths.sort()
 
+        # Now setup each set of images
+        image_names = [os.path.basename(z) for z in tif_paths]
 
-    def get_circle_mask(self, i):
-        path = self.circle_folder + self.image_names[i]
-        image = ski.io.imread(path, plugin='tifffile')
-        return image > 0
+        self.image_set_list = []
 
-    def get_edges_mask(self, i):
-        path = self.edges_folder + self.image_names[i]
-        image = ski.io.imread(path, plugin='tifffile')
-        return image > 0
+        for cur_name in image_names:
+            im_set = Image_Set(cur_name, self.path_dict)
+            self.image_set_list.append(im_set)
 
-    def get_doctored_edges_mask(self, i):
-        path = self.doctored_edges_folder + self.image_names[i]
-        image = ski.io.imread(path, plugin='tifffile')
-        return image > 0
+class Image_Set():
+    def __init__(self, image_name, path_dict):
+        self.image_name = image_name
+        self.path_dict = path_dict
+        self.bioformats_xml = Bioformats_XML(self.path_dict['tif_folder'] + self.image_name)
 
-    def get_channels_mask(self, i):
-        path = self.masks_folder + self.image_names[i]
-        image = ski.io.imread(path, plugin='tifffile')
-        return image > 0
+        self.circle_mask = None
+        self.edges_mask = None
+        self.doctored_edges_mask = None
+        self.channels_mask = None
+        self.color_fractions = None
+        self.image = None
 
-    def get_color_fractions(self, i):
-        channel_masks = self.get_channels_mask(i)
-        sum_mask = np.zeros((channel_masks.shape[1], channel_masks.shape[2]))
-        for i in range(channel_masks.shape[0]):
-            sum_mask += channel_masks[i, :, :]
+        # Other useful stuff for data analysis
+        self.image_coordinate_df = None
+        self.frac_df_list = None
+
+    def finish_setup(self):
+        '''This step takes a lot of time & memory but vastly speeds up future computation.'''
+
+        # Circle mask
+        self.circle_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
+        # Edges mask
+        self.edges_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
+        # Doctored edges mask
+        self.doctored_edges_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
+        # Channel mask
+        self.channel_masks = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
+
+        # Based on this information, calculate fractions
+        self.fractions = self.get_color_fractions()
+
+        # Read the original image too
+        self.image = ski.io.imread(self.path_dict['tif_folder'] + self.image_name, plugin='tifffile')
+
+        # Initialize image coordinate df
+        self.image_coordinate_df = self.get_image_coordinate_df()
+
+        # Initialize channel fraction df
+        self.frac_df_list = self.get_channel_frac_df()
+
+    def get_color_fractions(self):
+        sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
+        for i in range(self.channel_masks.shape[0]):
+            sum_mask += self.channel_masks[i, :, :]
 
         # Now divide each channel by the sum
-        fractions = channel_masks / sum_mask.astype(np.float)
+        fractions = self.channel_masks / sum_mask.astype(np.float)
         fractions[np.isnan(fractions)] = 0
         return fractions
 
-    def get_image(self, i):
-        path = self.tif_folder + self.image_names[i]
-        image = ski.io.imread(path, plugin='tifffile')
-        return image > 0
 
-    def get_center(self, i):
+    def get_center(self):
         '''Returns the mean center as the standard error of the mean'''
         center_list = []
-        circles = self.get_circle_mask(i)
-        for i in range(circles.shape[0]):
-            cur_image = circles[i, :, :]
+        for i in range(self.circle_mask.shape[0]):
+            cur_image = self.circle_mask[i, :, :]
             label_image = ski.measure.label(cur_image, neighbors=8)
             props = ski.measure.regionprops(label_image)
             for p in props:
@@ -91,12 +107,11 @@ class Range_Expansion_Experiment():
 
         return av_center, std_err
 
-    def get_image_coordinate_df(self, i):
+    def get_image_coordinate_df(self):
         '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
         as the origin.'''
-        image = self.get_image(i)
-        rows = np.arange(0, image.shape[1])
-        columns = np.arange(0, image.shape[2])
+        rows = np.arange(0, self.image.shape[1])
+        columns = np.arange(0, self.image.shape[2])
         rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
 
         r_ravel = rmesh.ravel()
@@ -104,7 +119,7 @@ class Range_Expansion_Experiment():
 
         df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel})
 
-        av_center, std_err = self.get_center(i)
+        av_center, std_err = self.get_center()
         df['delta_r'] = df['r'] - av_center['r']
         df['delta_c'] = df['c'] - av_center['c']
         df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
@@ -112,13 +127,11 @@ class Range_Expansion_Experiment():
 
         return df
 
-    def get_channel_frac_df(self, i):
-        all_fractions = self.get_color_fractions(i)
-        image_coordinates = self.get_image_coordinate_df(i)
+    def get_channel_frac_df(self):
 
         df_list = []
-        for frac in all_fractions:
-            df = image_coordinates.copy()
+        for frac in self.fractions:
+            df = self.image_coordinate_df.copy()
             df['f'] = frac.ravel()
             df_list.append(df)
         return df_list
@@ -130,17 +143,15 @@ class Range_Expansion_Experiment():
         mean_groups = groups.agg(['mean'])
         return mean_groups, bins
 
-    def bin_theta_at_r_df(self, i, r):
+    def bin_theta_at_r_df(self, r):
 
         theta_df_list = []
-
-        fractions = self.get_channel_frac_df(i)
 
         delta_x = 1.5
         delta_theta = delta_x / float(r)
         theta_bins = np.arange(-np.pi - .01*delta_theta, np.pi + 1.01*delta_theta, delta_theta)
 
-        for frac in fractions:
+        for frac in self.frac_df_list:
             # First get the theta at the desired r; r should be an int
             theta_df = frac[(frac['radius'] >= r - delta_x/2.) & (frac['radius'] < r + delta_x/2.)]
 
@@ -150,8 +161,8 @@ class Range_Expansion_Experiment():
             theta_df_list.append(mean_df)
         return theta_df_list, theta_bins
 
-    def delta_theta_convolve_df(self, i, r, delta_theta):
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(i, r)
+    def delta_theta_convolve_df(self, r, delta_theta):
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
         # Now determine how many indices away you need to grab to properly do the convolution
         theta_spacing = theta_bins[1] - theta_bins[0]
         theta_index = np.ceil(delta_theta / theta_spacing)
@@ -191,22 +202,21 @@ class Range_Expansion_Experiment():
             count += 1
         return new_df_list
 
-    def get_local_hetero_df(self, i):
-        df_list = self.get_channel_frac_df(i)
-        local_hetero = np.zeros(df_list[0].shape[0])
+    def get_local_hetero_df(self):
+        local_hetero = np.zeros(self.frac_df_list[0].shape[0])
 
-        for j in range(len(df_list)):
-            result = df_list[j]['f']*(1-df_list[j]['f'])
+        for j in range(len(self.frac_df_list[0])):
+            result = self.frac_df_list[j]['f']*(1-self.frac_df_list[j]['f'])
             local_hetero += result
-        hetero_df = self.get_image_coordinate_df(i)
+        hetero_df = self.image_coordinate_df.copy()
         hetero_df['h'] = local_hetero
         return hetero_df
 
-    def get_nonlocal_hetero_df(self, i, r, delta_theta):
+    def get_nonlocal_hetero_df(self, r, delta_theta):
         # Get DF evaluated at different points
-        convolve_list = self.delta_theta_convolve_df(i, r, delta_theta)
+        convolve_list = self.delta_theta_convolve_df(r, delta_theta)
         # Get local DF
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(i, r)
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
 
         # Calculate the heterozygosity
         nonlocal_hetero = np.zeros(convolve_list[0].shape[0])
@@ -219,15 +229,15 @@ class Range_Expansion_Experiment():
         hetero_df['h', 'mean'] = nonlocal_hetero
         return hetero_df
 
-    def get_local_hetero_mask(self, i):
-        fractions = self.get_color_fractions(i)
-        local_hetero_mask = np.zeros((fractions.shape[1], fractions.shape[2]))
+    def get_local_hetero_mask(self):
+        local_hetero_mask = np.zeros((self.fractions.shape[1], self.fractions.shape[2]))
 
-        for i in range(fractions.shape[0]):
-            for j in range(fractions.shape[0]):
+        for i in range(self.fractions.shape[0]):
+            for j in range(self.fractions.shape[0]):
                 if i != j:
-                    draw_different = fractions[i] * fractions[j]
+                    draw_different = self.fractions[i] * self.fractions[j]
                     local_hetero_mask += draw_different
+
 
 class Bioformats_XML():
     def __init__(self, path):
