@@ -174,6 +174,7 @@ class Image_Set():
         return theta_df_list, theta_bins
 
     def delta_theta_convolve_df(self, r, delta_theta):
+        '''Calculates the heterozygosity delta_theta away'''
         theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
         # Now determine how many indices away you need to grab to properly do the convolution
         theta_spacing = theta_bins[1] - theta_bins[0]
