@@ -59,13 +59,25 @@ class Image_Set():
         '''This step takes a lot of time & memory but vastly speeds up future computation.'''
 
         # Circle mask
-        self.circle_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
+        try:
+            self.circle_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
+        except IOError:
+            print 'No circle mask found!'
         # Edges mask
-        self.edges_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
+        try:
+            self.edges_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
+        except IOError:
+            print 'No edges mask found!'
         # Doctored edges mask
-        self.doctored_edges_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
+        try:
+            self.doctored_edges_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
+        except IOError:
+            print 'No doctored edges mask found!'
         # Channel mask
-        self.channel_masks = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
+        try:
+            self.channel_masks = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
+        except IOError:
+            print 'No channel masks found!'
 
         # Based on this information, calculate fractions
         self.fractions = self.get_color_fractions()
