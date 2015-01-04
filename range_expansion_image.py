@@ -217,7 +217,7 @@ class Image_Set():
     def get_local_hetero_df(self):
         local_hetero = np.zeros(self.frac_df_list[0].shape[0])
 
-        for j in range(len(self.frac_df_list[0])):
+        for j in range(len(self.frac_df_list)):
             result = self.frac_df_list[j]['f']*(1-self.frac_df_list[j]['f'])
             local_hetero += result
         hetero_df = self.image_coordinate_df.copy()
