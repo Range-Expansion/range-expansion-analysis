@@ -176,32 +176,18 @@ class Image_Set():
     def delta_theta_convolve_df(self, r, delta_theta):
         '''Calculates the heterozygosity delta_theta away'''
         theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
-        # Now determine how many indices away you need to grab to properly do the convolution
+        # Now determine how many indices away you need to grab to properly do the roll
         theta_spacing = theta_bins[1] - theta_bins[0]
         theta_index = np.ceil(delta_theta / theta_spacing)
         if np.mod(theta_index, 1) == 0:
             theta_index -= 1
-        theta_index = int(theta_index)
 
-        mid_index = theta_df_list[0].shape[0]/2
+        theta_index = int(theta_index) # The number we have to roll
 
-        neg_index = mid_index - theta_index
-        pos_index = mid_index + theta_index
-
-        # Create the kernel
-        kernel = np.zeros(theta_df_list[0].shape[0])
-        kernel[neg_index] = 0.5
-        kernel[pos_index] = 0.5
-        K = np.fft.fft(kernel)
-
-        # Grab the desired f values
         conv_list = []
         for cur_theta_df in theta_df_list:
             f_values = cur_theta_df['f'].values.flatten()
-            F = np.fft.fft(f_values)
-            fourier_product = F*K
-            # The imaginary part is zero within numerical error.
-            convolution = np.real(np.fft.ifft(fourier_product))
+            convolution = np.roll(f_values, theta_index)
             conv_list.append(convolution)
 
         # Return the updated lists
