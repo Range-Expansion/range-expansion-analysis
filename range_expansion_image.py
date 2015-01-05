@@ -179,7 +179,7 @@ class Image_Set():
         # Now determine how many indices away you need to grab to properly do the roll
         theta_spacing = theta_bins[1] - theta_bins[0]
         theta_index = np.ceil(delta_theta / theta_spacing)
-        if np.mod(theta_index, 1) == 0:
+        if np.mod(theta_index, 1) == 0 and delta_theta != 0:
             theta_index -= 1
 
         theta_index = int(theta_index) # The number we have to roll
