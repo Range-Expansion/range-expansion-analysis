@@ -228,6 +228,49 @@ class Image_Set():
         hetero_df['h', 'mean'] = nonlocal_hetero
         return hetero_df
 
+    def get_nonlocal_hetero_df_array(self, r):
+        '''Calculates the heterozygosity at every theta.'''
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
+        theta_step = theta_bins[1] - theta_bins[0]
+
+        # Grab the desired data
+        theta_f_list = []
+        for cur_theta_df in theta_df_list:
+            theta_f_list.append(cur_theta_df['f'].values)
+        theta_f_list = np.array(theta_f_list) # [0, ...] is the first list, etc.
+        convolve_list = theta_f_list.copy()
+
+        # Number of points to calcualte
+        num_points = theta_df_list[0].shape[0]
+
+        delta_theta_list = -1.*np.ones(num_points, dtype=np.double)
+        mean_h_list = -1.*np.ones(num_points, dtype=np.double)
+        for i in range(num_points):
+            if i == 0:
+                delta_theta_list[i] = 0
+            else:
+                delta_theta_list[i] = delta_theta_list[i - 1] + theta_step
+
+            # Calculate the heterozygosity
+            multiplied = theta_f_list * (1 - convolve_list)
+            # From multiplied, calculat the heterozygosity
+            h = multiplied.sum(axis=0)
+            mean_h_list[i] = h.mean()
+
+            # Roll the convolve list by 1
+            convolve_list = np.roll(convolve_list, 1, axis=1)
+
+        # Return theta between -pi and pi
+        delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
+
+        # Now sort based on theta
+        sorted_indices = np.argsort(delta_theta_list)
+        delta_theta_list = delta_theta_list[sorted_indices]
+        mean_h_list = mean_h_list[sorted_indices]
+
+        return mean_h_list, delta_theta_list
+
+
     def get_local_hetero_mask(self):
         local_hetero_mask = np.zeros((self.fractions.shape[1], self.fractions.shape[2]))
 
