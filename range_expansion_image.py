@@ -56,6 +56,7 @@ class Range_Expansion_Experiment():
 
             if not cur_df[cur_df.isnull().any(axis=1)].empty:
                 print 'Nonlocal heterozygosity returning nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
+                print cur_df[cur_df.isnull().any(axis=1)]
 
             cur_df['radius_scaled'] = r_scaled
             cur_df['im_set_index'] = im_set_index
@@ -224,18 +225,19 @@ class Image_Set():
         mean_groups = groups.agg(['mean'])
         return mean_groups, bins
 
-    def bin_theta_at_r_df(self, r, delta_x=5.01):
+    def bin_theta_at_r_df(self, r, delta_x=1.5):
 
         theta_df_list = []
 
         delta_theta = delta_x / float(r)
-        theta_bins = np.arange(-np.pi - .01*delta_theta, np.pi + 1.01*delta_theta, delta_theta)
+        theta_bins = np.arange(-np.pi - .5*delta_theta, np.pi + .5*delta_theta, delta_theta)
 
         for frac in self.frac_df_list:
             # First get the theta at the desired r; r should be an int
             theta_df = frac[(frac['radius'] >= r - delta_x/2.) & (frac['radius'] < r + delta_x/2.)]
             if not theta_df[theta_df.isnull().any(axis=1)].empty:
-                print 'theta_df in bin_theta_at_r_df has NaN: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
+                print 'bin_theta_at_r_df has NaN due to r binning: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
+                print theta_df[theta_df.isnull().any(axis=1)]
 
             theta_cut = pd.cut(theta_df['theta'], theta_bins)
             groups = theta_df.groupby(theta_cut)
@@ -244,6 +246,7 @@ class Image_Set():
             if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
                 print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
                       ' name= ' + self.image_name
+                print mean_df[mean_df.isnull().any(axis=1)]
 
             theta_df_list.append(mean_df)
 
