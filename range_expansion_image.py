@@ -80,6 +80,7 @@ class Range_Expansion_Experiment():
 
         if not result[result.isnull().any(axis=1)].empty:
             print 'Binning is too tight; getting NaN at r=' + str(r_scaled)
+            print result[result.isnull().any(axis=1)]
 
         return result
 
