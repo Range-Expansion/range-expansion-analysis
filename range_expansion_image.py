@@ -53,7 +53,10 @@ class Image_Set():
 
         # Other useful stuff for data analysis
         self.image_coordinate_df = None
+        self.image_coordinate_df_max_radius = None
         self.frac_df_list = None
+        # Information about the maximum radius of the data we care about
+        self.max_radius = None
 
     def finish_setup(self):
         '''This step takes a lot of time & memory but vastly speeds up future computation.'''
@@ -79,6 +82,9 @@ class Image_Set():
         except IOError:
             print 'No channel masks found!'
 
+        # Find max radius in brightfield mask; needed for other functions
+        self.max_radius = self.get_max_radius()
+
         # Based on this information, calculate fractions
         self.fractions = self.get_color_fractions()
 
@@ -87,9 +93,12 @@ class Image_Set():
 
         # Initialize image coordinate df
         self.image_coordinate_df = self.get_image_coordinate_df()
+        self.image_coordinate_df_max_radius = self.image_coordinate_df[self.image_coordinate_df['radius'] < self.max_radius]
 
         # Initialize channel fraction df
         self.frac_df_list = self.get_channel_frac_df()
+
+
 
     def get_color_fractions(self):
         sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
@@ -119,6 +128,19 @@ class Image_Set():
 
         return av_center, std_err
 
+    def get_max_radius(self):
+        diameter_list = []
+        for i in range(self.circle_mask.shape[0]):
+            cur_image = self.circle_mask[i, :, :]
+            # Find maximum diameter
+            r, c = np.where(cur_image)
+            diameter = np.float(r.max() - r.min())
+            diameter_list.append(diameter)
+        diameter_list = np.array(diameter_list)
+        # Now find the mean radius
+        max_radius = int(np.floor(diameter_list.mean()/2))
+        return max_radius
+
     def get_image_coordinate_df(self):
         '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
         as the origin.'''
@@ -145,6 +167,9 @@ class Image_Set():
         for frac in self.fractions:
             df = self.image_coordinate_df.copy()
             df['f'] = frac.ravel()
+            # Only keep data less than the maximum radius!
+            df = df[df['radius'] < self.max_radius]
+
             df_list.append(df)
         return df_list
 
@@ -207,7 +232,7 @@ class Image_Set():
         for j in range(len(self.frac_df_list)):
             result = self.frac_df_list[j]['f']*(1-self.frac_df_list[j]['f'])
             local_hetero += result
-        hetero_df = self.image_coordinate_df.copy()
+        hetero_df = self.image_coordinate_df_max_radius.copy()
         hetero_df['h'] = local_hetero
         return hetero_df
 
