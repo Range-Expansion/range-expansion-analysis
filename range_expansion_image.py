@@ -38,6 +38,44 @@ class Range_Expansion_Experiment():
             im_set = Image_Set(cur_name, self.path_dict)
             self.image_set_list.append(im_set)
 
+    ## Work with Averaging multiple sets of data
+
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500):
+        df_list = []
+        standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
+
+        for im_set_index in im_sets_to_use:
+            cur_im_set = self.image_set_list[im_set_index]
+            cur_scaling = cur_im_set.get_scaling()
+
+            desired_r = np.around(r_scaled / cur_scaling)
+            result, theta_list = cur_im_set.get_nonlocal_hetero_df_array(desired_r)
+            cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
+            cur_df['radius_scaled'] = r_scaled
+            cur_df['im_set_index'] = im_set_index
+
+            # Now bin on the standard theta bins
+            theta_cut = pd.cut(cur_df['theta'], standard_theta_bins)
+            cur_df = cur_df.groupby(theta_cut).mean()
+
+            df_list.append(cur_df)
+
+        # Now combine the df_list
+        combined_df = pd.concat(df_list)
+        # Groupby the index which is theta
+        groups = combined_df.groupby(level=0, axis=0)
+        # Get statistics
+        result = groups.agg(['mean', sp.stats.sem])
+        # Sort the results by theta
+        result = result.sort([('theta', 'mean')])
+
+        # Check for nan's
+        num_rows_with_nan = len(result[result.isnull().any(axis=1)])
+        if num_rows_with_nan > 0:
+            print 'Binning is too tight; getting NaN at r=' + str(r_scaled)
+
+        return result
+
 class Image_Set():
     def __init__(self, image_name, path_dict):
         self.image_name = image_name
@@ -304,6 +342,11 @@ class Image_Set():
                 if i != j:
                     draw_different = self.fractions[i] * self.fractions[j]
                     local_hetero_mask += draw_different
+
+    def get_scaling(self):
+        '''Assumes x & y pixel scaling are the same'''
+        scaling_str = self.bioformats_xml.pixel_nodes[0].attrib['PhysicalSizeX']
+        return float(scaling_str)
 
 
 class Bioformats_XML():
