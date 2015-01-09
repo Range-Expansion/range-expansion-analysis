@@ -149,7 +149,7 @@ class Image_Set():
         return df_list
 
     def bin_image_coordinate_r_df(self, df):
-        max_r_ceil = np.ceil(df['radius'].max())
+        max_r_ceil = np.floor(df['radius'].max())
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
         groups = df.groupby(pd.cut(df.radius, bins))
         mean_groups = groups.agg(['mean'])
