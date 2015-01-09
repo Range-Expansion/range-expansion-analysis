@@ -40,7 +40,7 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
-    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500):
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
 
@@ -53,9 +53,9 @@ class Range_Expansion_Experiment():
             cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
 
             # Check for nan's caused by heterozygosity
-            num_rows_with_nan = len(cur_df[cur_df.isnull().any(axis=1)])
-            if num_rows_with_nan > 0:
-                print 'Nonlocal heterozygosity returning ' + str(num_rows_with_nan) + ' nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
+
+            if not cur_df[cur_df.isnull().any(axis=1)].empty:
+                print 'Nonlocal heterozygosity returning nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
 
             cur_df['radius_scaled'] = r_scaled
             cur_df['im_set_index'] = im_set_index
@@ -76,8 +76,8 @@ class Range_Expansion_Experiment():
         result = result.sort([('theta', 'mean')])
 
         # Check for nan's due to binning
-        num_rows_with_nan = len(result[result.isnull().any(axis=1)])
-        if num_rows_with_nan > 0:
+
+        if not result[result.isnull().any(axis=1)].empty:
             print 'Binning is too tight; getting NaN at r=' + str(r_scaled)
 
         return result
@@ -224,7 +224,7 @@ class Image_Set():
         mean_groups = groups.agg(['mean'])
         return mean_groups, bins
 
-    def bin_theta_at_r_df(self, r, delta_x=4.01):
+    def bin_theta_at_r_df(self, r, delta_x=5.01):
 
         theta_df_list = []
 
