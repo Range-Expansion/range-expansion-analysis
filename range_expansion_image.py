@@ -51,6 +51,12 @@ class Range_Expansion_Experiment():
             desired_r = np.around(r_scaled / cur_scaling)
             result, theta_list = cur_im_set.get_nonlocal_hetero_df_array(desired_r)
             cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
+
+            # Check for nan's caused by heterozygosity
+            num_rows_with_nan = len(cur_df[cur_df.isnull().any(axis=1)])
+            if num_rows_with_nan > 0:
+                print 'Nonlocal heterozygosity returning ' + str(num_rows_with_nan) + ' nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
+
             cur_df['radius_scaled'] = r_scaled
             cur_df['im_set_index'] = im_set_index
 
@@ -69,7 +75,7 @@ class Range_Expansion_Experiment():
         # Sort the results by theta
         result = result.sort([('theta', 'mean')])
 
-        # Check for nan's
+        # Check for nan's due to binning
         num_rows_with_nan = len(result[result.isnull().any(axis=1)])
         if num_rows_with_nan > 0:
             print 'Binning is too tight; getting NaN at r=' + str(r_scaled)
@@ -272,23 +278,6 @@ class Image_Set():
             local_hetero += result
         hetero_df = self.image_coordinate_df_max_radius.copy()
         hetero_df['h'] = local_hetero
-        return hetero_df
-
-    def get_nonlocal_hetero_df(self, r, delta_theta):
-        # Get DF evaluated at different points
-        convolve_list = self.delta_theta_convolve_df(r, delta_theta)
-        # Get local DF
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
-
-        # Calculate the heterozygosity
-        nonlocal_hetero = np.zeros(convolve_list[0].shape[0])
-
-        for j in range(len(convolve_list)):
-            result = theta_df_list[j]['f']*(1-convolve_list[j]['f'])
-            nonlocal_hetero += result.values.flatten()
-
-        hetero_df = theta_df_list[0].drop('f', 1)
-        hetero_df['h', 'mean'] = nonlocal_hetero
         return hetero_df
 
     def get_nonlocal_hetero_df_array(self, r):
