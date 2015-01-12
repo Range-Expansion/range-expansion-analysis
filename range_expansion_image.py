@@ -84,6 +84,8 @@ class Range_Expansion_Experiment():
         # Create a column with the midpoint of each bin which is what we actually want
         result['r_scaled_midbin'] = (rscaled_bins[1:] + rscaled_bins[0:-1])/2.
 
+        return result
+
     def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
