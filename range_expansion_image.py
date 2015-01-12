@@ -40,6 +40,50 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
+    def get_local_hetero_averaged(self, im_sets_to_use, num_r_bins=800):
+        '''Assumes that the images are already setup.'''
+        #TODO: Figure out the exponential decay returned by this is valid...it's probably not
+
+        num_r_bins=800
+
+        # Get the maximum radius to bin, first of all
+        max_r_scaled = 99999 # in mm; this is obviously ridiculous, nothing will be larger
+        for im_set_index in im_sets_to_use:
+            cur_im = self.image_set_list[im_set_index]
+            cur_max_r = cur_im.max_radius * cur_im.get_scaling()
+            if cur_max_r < max_r_scaled:
+                max_r_scaled = cur_max_r
+
+        # Set up binning
+        rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
+
+        mean_list = []
+        # Loop through im_sets, bin at each r
+        for im_set_index in im_sets_to_use:
+            cur_im = self.image_set_list[im_set_index]
+            local_hetero = cur_im.get_local_hetero_df()
+            local_hetero['radius_scaled'] = local_hetero['radius'] * cur_im.get_scaling()
+            # Bin on the set coordinates, be alerted if binning results in NaN's (too tight)
+            r_scaled_cut = pd.cut(local_hetero['radius_scaled'], rscaled_bins)
+            r_scaled_groups = local_hetero.groupby(r_scaled_cut)
+            cur_im_mean = r_scaled_groups.mean()
+            # Check for nan's
+            nan_list = cur_im_mean[cur_im_mean.isnull().any(axis=1)]
+            if not nan_list.empty:
+                print 'r binning is too tight; getting NaN'
+                print nan_list
+            cur_im_mean['im_set_index'] = im_set_index
+            # Append list
+            mean_list.append(cur_im_mean)
+        # Combine the list of each experiment
+        combined_mean_df = pd.concat(mean_list)
+        # Group by the index
+        result = combined_mean_df.groupby(level=0, axis=0).agg(['mean', sp.stats.sem])
+        # Sort by radius scaled
+        result = result.sort([('radius_scaled', 'mean')])
+        # Create a column with the midpoint of each bin which is what we actually want
+        result['r_scaled_midbin'] = (rscaled_bins[1:] + rscaled_bins[0:-1])/2.
+
     def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
