@@ -122,6 +122,9 @@ class Range_Expansion_Experiment():
         # Sort the results by theta
         result = result.sort([('theta', 'mean')])
 
+        # Return midbin
+        result['theta_midbin'] = (standard_theta_bins[1:] + standard_theta_bins[0:-1])/2.
+
         # Check for nan's due to binning
 
         if not result[result.isnull().any(axis=1)].empty:
