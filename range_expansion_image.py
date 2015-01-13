@@ -40,6 +40,27 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
+    def bin_multiple_df_on_r_mean(self, df_list, max_r_scaled, num_r_bins = 600):
+        # Set up binning
+        rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
+
+        mean_list = []
+        # Loop through im_sets, bin at each r
+        for cur_df in df_list:
+            # Assumes that the dataframes have a scaled radius column
+            r_scaled_cut = pd.cut(cur_df['radius_scaled'], rscaled_bins)
+            r_scaled_groups = cur_df.groupby(r_scaled_cut)
+            cur_im_mean = r_scaled_groups.mean()
+            # Check for nan's
+            nan_list = cur_im_mean[cur_im_mean.isnull().any(axis=1)]
+            if not nan_list.empty:
+                print 'r binning is too tight; getting NaN'
+                print nan_list
+            # Append list
+            mean_list.append(cur_im_mean)
+        # Combine the list of each experiment
+        return mean_list
+
     def get_local_hetero_averaged(self, im_sets_to_use, num_r_bins=800):
         '''Assumes that the images are already setup.'''
         #TODO: Figure out the exponential decay returned by this is valid...it's probably not
@@ -57,24 +78,14 @@ class Range_Expansion_Experiment():
         # Set up binning
         rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
 
-        mean_list = []
+        local_hetero_df_list = []
         # Loop through im_sets, bin at each r
         for im_set_index in im_sets_to_use:
             cur_im = self.image_set_list[im_set_index]
             local_hetero = cur_im.get_local_hetero_df()
-            local_hetero['radius_scaled'] = local_hetero['radius'] * cur_im.get_scaling()
-            # Bin on the set coordinates, be alerted if binning results in NaN's (too tight)
-            r_scaled_cut = pd.cut(local_hetero['radius_scaled'], rscaled_bins)
-            r_scaled_groups = local_hetero.groupby(r_scaled_cut)
-            cur_im_mean = r_scaled_groups.mean()
-            # Check for nan's
-            nan_list = cur_im_mean[cur_im_mean.isnull().any(axis=1)]
-            if not nan_list.empty:
-                print 'r binning is too tight; getting NaN'
-                print nan_list
-            cur_im_mean['im_set_index'] = im_set_index
-            # Append list
-            mean_list.append(cur_im_mean)
+            local_hetero_df_list.append(local_hetero)
+
+        mean_list = self.bin_multiple_df_on_r_mean(local_hetero_df_list, max_r_scaled, num_r_bins=num_r_bins)
         # Combine the list of each experiment
         combined_mean_df = pd.concat(mean_list)
         # Group by the index
@@ -272,6 +283,9 @@ class Image_Set():
         mean_groups = groups.agg(['mean'])
         # Assign the binning midpoints...
         mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
+        mean_groups['radius_scaled', 'mean'] = mean_groups['radius', 'mean'] * self.get_scaling()
+        mean_groups['radius_midbin_scaled'] = mean_groups['radius_midbin'] * self.get_scaling()
+
         return mean_groups, bins
 
     def bin_theta_at_r_df(self, r, delta_x=1.5):
