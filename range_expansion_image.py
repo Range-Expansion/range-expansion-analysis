@@ -415,6 +415,20 @@ class Image_Set():
             new_df[f_str] = self.frac_df_list[i]['f']
         return new_df
 
+    def get_edge_image(self):
+        #sum_mask counts how many different colors are at each pixel
+        sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
+        for i in range(self.channel_masks.shape[0]):
+            sum_mask += self.channel_masks[i, :, :]
+        edges = sum_mask > 1
+        return edges
+
+    def get_edge_df(self):
+        edge_image = self.get_edge_image()
+        edge_df = self.image_coordinate_df.copy()
+        edge_df['edges'] = edge_image.ravel()
+        edge_df = edge_df[edge_df['radius'] < self.max_radius]
+
 
     # Utility functions
 
