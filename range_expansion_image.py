@@ -40,7 +40,7 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
-    def bin_multiple_df_on_r_mean(self, df_list, max_r_scaled, num_r_bins = 600):
+    def bin_multiple_df_on_r_getmean(self, df_list, max_r_scaled, num_r_bins = 600):
         # Set up binning
         rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
 
@@ -65,8 +65,6 @@ class Range_Expansion_Experiment():
         '''Assumes that the images are already setup.'''
         #TODO: Figure out the exponential decay returned by this is valid...it's probably not
 
-        num_r_bins=800
-
         # Get the maximum radius to bin, first of all
         max_r_scaled = 99999 # in mm; this is obviously ridiculous, nothing will be larger
         for im_set_index in im_sets_to_use:
@@ -85,7 +83,7 @@ class Range_Expansion_Experiment():
             local_hetero = cur_im.get_local_hetero_df()
             local_hetero_df_list.append(local_hetero)
 
-        mean_list = self.bin_multiple_df_on_r_mean(local_hetero_df_list, max_r_scaled, num_r_bins=num_r_bins)
+        mean_list = self.bin_multiple_df_on_r_getmean(local_hetero_df_list, max_r_scaled, num_r_bins=num_r_bins)
         # Combine the list of each experiment
         combined_mean_df = pd.concat(mean_list)
         # Group by the index
@@ -163,6 +161,7 @@ class Image_Set():
         self.frac_df_list = None
         # Information about the maximum radius of the data we care about
         self.max_radius = None
+        self.max_radius_scaled = None
 
     def finish_setup(self):
         '''This step takes a lot of time & memory but vastly speeds up future computation.'''
@@ -190,6 +189,7 @@ class Image_Set():
 
         # Find max radius in brightfield mask; needed for other functions
         self.max_radius = self.get_max_radius()
+        self.max_radius_scaled = self.max_radius * self.get_scaling()
 
         # Based on this information, calculate fractions
         self.fractions = self.get_color_fractions()
@@ -260,6 +260,7 @@ class Image_Set():
         df['delta_r'] = df['r'] - av_center['r']
         df['delta_c'] = df['c'] - av_center['c']
         df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
+        df['radius_scaled'] = df['radius'] * self.get_scaling()
         df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
 
         return df
@@ -283,7 +284,6 @@ class Image_Set():
         mean_groups = groups.agg(['mean'])
         # Assign the binning midpoints...
         mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
-        mean_groups['radius_scaled', 'mean'] = mean_groups['radius', 'mean'] * self.get_scaling()
         mean_groups['radius_midbin_scaled'] = mean_groups['radius_midbin'] * self.get_scaling()
 
         return mean_groups, bins
