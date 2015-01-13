@@ -414,7 +414,11 @@ class Image_Set():
         '''Make a simple plot of the local heterozygosity. Useful for diagnostic purposes.'''
         hetero_df = self.get_local_hetero_df()
         binned_hetero, bins = self.bin_image_coordinate_r_df(hetero_df)
-        plt.semilogy(binned_hetero['radius_midbin'], binned_hetero['h', 'mean'])
+        # Add a scaled radius row
+        binned_hetero['radius_midbin_scaled'] = binned_hetero['radius_midbin'] * self.get_scaling()
+        plt.semilogy(binned_hetero['radius_midbin_scaled'], binned_hetero['h', 'mean'])
+        plt.xlabel('Radius (mm)')
+        plt.ylabel(r'$H(r)$')
 
 
 class Bioformats_XML():
