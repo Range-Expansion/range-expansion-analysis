@@ -95,6 +95,39 @@ class Range_Expansion_Experiment():
 
         return result
 
+    def get_edge_density_averaged(self, im_sets_to_use, num_r_bins=800):
+        '''Assumes that the images are already setup.'''
+
+        # Get the maximum radius to bin, first of all
+        max_r_scaled = 99999 # in mm; this is obviously ridiculous, nothing will be larger
+        for im_set_index in im_sets_to_use:
+            cur_im = self.image_set_list[im_set_index]
+            cur_max_r = cur_im.max_radius * cur_im.get_scaling()
+            if cur_max_r < max_r_scaled:
+                max_r_scaled = cur_max_r
+
+        # Set up binning
+        rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
+
+        edge_df_list = []
+        # Loop through im_sets, bin at each r
+        for im_set_index in im_sets_to_use:
+            cur_im = self.image_set_list[im_set_index]
+            edge_df = cur_im.get_edge_df()
+            edge_df_list.append(edge_df)
+
+        mean_list = self.bin_multiple_df_on_r_getmean(edge_df_list, max_r_scaled, num_r_bins=num_r_bins)
+        # Combine the list of each experiment
+        combined_mean_df = pd.concat(mean_list)
+        # Group by the index
+        result = combined_mean_df.groupby(level=0, axis=0).agg(['mean', sp.stats.sem])
+        # Sort by radius scaled
+        result = result.sort([('radius_scaled', 'mean')])
+        # Create a column with the midpoint of each bin which is what we actually want
+        result['r_scaled_midbin'] = (rscaled_bins[1:] + rscaled_bins[0:-1])/2.
+
+        return result
+
     def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
@@ -428,7 +461,7 @@ class Image_Set():
         edge_df = self.image_coordinate_df.copy()
         edge_df['edges'] = edge_image.ravel()
         edge_df = edge_df[edge_df['radius'] < self.max_radius]
-
+        return edge_df
 
     # Utility functions
 
