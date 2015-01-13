@@ -392,6 +392,18 @@ class Image_Set():
                     draw_different = self.fractions[i] * self.fractions[j]
                     local_hetero_mask += draw_different
 
+    def get_frac_in_one_df(self):
+        '''A utility function that combines all fractions in one list.'''
+        new_df = self.frac_df_list[0].copy()
+        new_df = new_df.rename(columns={'f':'f0'})
+        for i in range(1, len(self.frac_df_list)):
+            f_str = 'f' + str(i)
+            new_df[f_str] = self.frac_df_list[i]['f']
+        return new_df
+
+
+    # Utility functions
+
     def get_scaling(self):
         '''Assumes x & y pixel scaling are the same'''
         scaling_str = self.bioformats_xml.pixel_nodes[0].attrib['PhysicalSizeX']
