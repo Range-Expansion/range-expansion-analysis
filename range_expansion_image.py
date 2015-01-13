@@ -193,8 +193,6 @@ class Image_Set():
         # Initialize channel fraction df
         self.frac_df_list = self.get_channel_frac_df()
 
-
-
     def get_color_fractions(self):
         sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
         for i in range(self.channel_masks.shape[0]):
@@ -204,7 +202,6 @@ class Image_Set():
         fractions = self.channel_masks / sum_mask.astype(np.float)
         fractions[np.isnan(fractions)] = 0
         return fractions
-
 
     def get_center(self):
         '''Returns the mean center as the standard error of the mean'''
@@ -273,6 +270,8 @@ class Image_Set():
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
         groups = df.groupby(pd.cut(df.radius, bins))
         mean_groups = groups.agg(['mean'])
+        # Assign the binning midpoints...
+        mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
         return mean_groups, bins
 
     def bin_theta_at_r_df(self, r, delta_x=1.5):
@@ -403,8 +402,7 @@ class Image_Set():
         '''Make a simple plot of the local heterozygosity. Useful for diagnostic purposes.'''
         hetero_df = self.get_local_hetero_df()
         binned_hetero, bins = self.bin_image_coordinate_r_df(hetero_df)
-        binned_hetero['r_midbin'] = (bins[1:] + bins[:-1])/2.
-        plt.semilogy(binned_hetero['r_midbin'], binned_hetero['h', 'mean'])
+        plt.semilogy(binned_hetero['radius_midbin'], binned_hetero['h', 'mean'])
 
 
 class Bioformats_XML():
