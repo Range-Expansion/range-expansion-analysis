@@ -398,6 +398,14 @@ class Image_Set():
         scaling_str = self.bioformats_xml.pixel_nodes[0].attrib['PhysicalSizeX']
         return float(scaling_str)
 
+    # Plotting functions
+    def plot_local_hetero(self):
+        '''Make a simple plot of the local heterozygosity. Useful for diagnostic purposes.'''
+        hetero_df = self.get_local_hetero_df()
+        binned_hetero, bins = self.bin_image_coordinate_r_df(hetero_df)
+        binned_hetero['r_midbin'] = (bins[1:] + bins[:-1])/2.
+        plt.semilogy(binned_hetero['r_midbin'], binned_hetero['h', 'mean'])
+
 
 class Bioformats_XML():
     def __init__(self, path):
