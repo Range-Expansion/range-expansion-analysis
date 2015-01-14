@@ -471,7 +471,7 @@ class Image_Set():
         return edge_df
 
     #### Annihilations and Coalescences ####
-    def get_annihilations(self, close_radius=3, size_cutoff=20, distance_from_max_radius=75):
+    def get_annihilations(self, close_radius=3, size_cutoff=200, distance_from_max_radius=75):
         annihilations_list = []
         for cur_channel in self.channel_masks:
             annihilations = np.logical_not(cur_channel)
@@ -487,6 +487,30 @@ class Image_Set():
 
         annihilations_list = np.array(annihilations_list)
         return annihilations_list
+
+    def plot_annihilations(self, **kwargs):
+        annihilations = self.get_annihilations(**kwargs)
+
+        rgb_list = []
+        for i in range(annihilations.shape[0]):
+            # Turn image into rgb
+            original_channel = self.image[i]
+            original_rgb = ski.color.gray2rgb(ski.img_as_float(original_channel))
+            # Scale the rgb so that it shows up
+            scaled_rgb = original_rgb / np.max(original_rgb)
+
+            # Now add the annihilations
+            cur_annihilations = annihilations[i]
+            # Selectively tint the scaled_rgb
+            r, c = np.where(cur_annihilations)
+
+            overlay_color = np.array([2., 2., 0], dtype=np.float64)
+
+            scaled_rgb[r, c] *= overlay_color
+            scaled_rgb = scaled_rgb / np.max(scaled_rgb)
+
+            rgb_list.append(scaled_rgb)
+        return rgb_list
 
     # Utility functions
 
