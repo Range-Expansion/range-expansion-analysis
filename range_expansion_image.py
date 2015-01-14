@@ -453,6 +453,8 @@ class Image_Set():
             new_df[f_str] = self.frac_df_list[i]['f']
         return new_df
 
+    #### Edges ####
+
     def get_edge_image(self):
         #sum_mask counts how many different colors are at each pixel
         sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
@@ -461,7 +463,6 @@ class Image_Set():
         edges = sum_mask > 1
         return edges
 
-    #### Edge density ####
 
     def get_edge_df(self):
         edge_image = self.get_edge_image()
@@ -488,7 +489,7 @@ class Image_Set():
         annihilations_list = np.array(annihilations_list)
         return annihilations_list
 
-    def plot_annihilations(self, **kwargs):
+    def get_annihilation_overlay(self, **kwargs):
         annihilations = self.get_annihilations(**kwargs)
 
         rgb_list = []
