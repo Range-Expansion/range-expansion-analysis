@@ -1,7 +1,12 @@
 __author__ = 'bryan'
+#skimage imports
 import skimage as ski
 import skimage.io
+import skimage.filter
 import skimage.measure
+import skimage.morphology
+import skimage.segmentation
+#oither stuff
 import matplotlib.pyplot as plt
 import tifffile as ti
 import xml.etree.ElementTree as ET
@@ -456,6 +461,8 @@ class Image_Set():
         edges = sum_mask > 1
         return edges
 
+    #### Edge density ####
+
     def get_edge_df(self):
         edge_image = self.get_edge_image()
         edge_df = self.image_coordinate_df.copy()
@@ -463,7 +470,35 @@ class Image_Set():
         edge_df = edge_df[edge_df['radius'] < self.max_radius]
         return edge_df
 
+    #### Annihilations and Coalescences ####
+    def get_annihilations(self, close_radius=3):
+        annihilations_list = []
+        for cur_channel in self.channel_masks:
+            annihilations = np.logical_not(cur_channel)
+            annihilations_noborder = ski.segmentation.clear_border(annihilations)
+            annihilations_closed = ski.morphology.closing(annihilations_noborder, ski.morphology.disk(close_radius))
+            cleaned_annihilations = self.remove_small(annihilations_closed)
+            annihilations_list.append(cleaned_annihilations)
+
+        annihilations_list = np.array(annihilations_list)
+        return annihilations_list
+
     # Utility functions
+
+    def remove_small(self, input_image, size_cutoff=20):
+        '''Scikit image does not appear to be doing this correctly...I did it myself.'''
+
+        output_image = np.zeros_like(input_image, dtype=np.bool)
+        size_cutoff = 20
+
+        labeled_image = ski.measure.label(input_image)
+        regionprops = ski.measure.regionprops(labeled_image)
+        for p in regionprops:
+            if p.area > size_cutoff:
+                coords = p.coords
+                output_image[coords[:, 0], coords[:, 1]] = True
+
+        return output_image
 
     def get_scaling(self):
         '''Assumes x & y pixel scaling are the same'''
