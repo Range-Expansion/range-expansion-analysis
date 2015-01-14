@@ -471,13 +471,18 @@ class Image_Set():
         return edge_df
 
     #### Annihilations and Coalescences ####
-    def get_annihilations(self, close_radius=3):
+    def get_annihilations(self, close_radius=3, size_cutoff=20, distance_from_max_radius=75):
         annihilations_list = []
         for cur_channel in self.channel_masks:
             annihilations = np.logical_not(cur_channel)
             annihilations_noborder = ski.segmentation.clear_border(annihilations)
             annihilations_closed = ski.morphology.closing(annihilations_noborder, ski.morphology.disk(close_radius))
-            cleaned_annihilations = self.remove_small(annihilations_closed)
+            cleaned_annihilations = self.remove_small(annihilations_closed, size_cutoff=size_cutoff)
+
+            # Remove false annihilations that occur at the circle border
+            to_remove_df = self.image_coordinate_df[self.image_coordinate_df['radius'] > (self.max_radius - distance_from_max_radius)]
+            cleaned_annihilations[to_remove_df['r'], to_remove_df['c']] = 0
+
             annihilations_list.append(cleaned_annihilations)
 
         annihilations_list = np.array(annihilations_list)
@@ -489,7 +494,6 @@ class Image_Set():
         '''Scikit image does not appear to be doing this correctly...I did it myself.'''
 
         output_image = np.zeros_like(input_image, dtype=np.bool)
-        size_cutoff = 20
 
         labeled_image = ski.measure.label(input_image)
         regionprops = ski.measure.regionprops(labeled_image)
