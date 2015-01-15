@@ -478,46 +478,13 @@ class Image_Set():
         return edge_df
 
     #### Annihilations and Coalescences ####
-    def get_annihilations(self, close_radius=3, size_cutoff=200, distance_from_max_radius=75):
-        annihilations_list = []
-        for cur_channel in self.channel_masks:
-            annihilations = np.logical_not(cur_channel)
-            annihilations_noborder = ski.segmentation.clear_border(annihilations)
-            annihilations_closed = ski.morphology.closing(annihilations_noborder, ski.morphology.disk(close_radius))
-            cleaned_annihilations = self.remove_small(annihilations_closed, size_cutoff=size_cutoff)
+    def get_annih_and_coal(self):
+        cur_annihilations = pd.read_csv(self.annihilation_txt_path, sep='\t')
+        cur_coalescences = pd.read_csv(self.coalescence_txt_path, sep='\t')
+        annihilations_df = pd.merge(cur_annihilations, self.image_coordinate_df, on=['r', 'c'] )
+        coalescence_df = pd.merge(cur_coalescences, self.image_coordinate_df, on=['r', 'c'] )
 
-            # Remove false annihilations that occur at the circle border
-            to_remove_df = self.image_coordinate_df[self.image_coordinate_df['radius'] > (self.max_radius - distance_from_max_radius)]
-            cleaned_annihilations[to_remove_df['r'], to_remove_df['c']] = 0
-
-            annihilations_list.append(cleaned_annihilations)
-
-        annihilations_list = np.array(annihilations_list)
-        return annihilations_list
-
-    def get_annihilation_overlay(self, **kwargs):
-        annihilations = self.get_annihilations(**kwargs)
-
-        rgb_list = []
-        for i in range(annihilations.shape[0]):
-            # Turn image into rgb
-            original_channel = self.image[i]
-            original_rgb = ski.color.gray2rgb(ski.img_as_float(original_channel))
-            # Scale the rgb so that it shows up
-            scaled_rgb = original_rgb / np.max(original_rgb)
-
-            # Now add the annihilations
-            cur_annihilations = annihilations[i]
-            # Selectively tint the scaled_rgb
-            r, c = np.where(cur_annihilations)
-
-            overlay_color = np.array([2., 2., 0], dtype=np.float64)
-
-            scaled_rgb[r, c] *= overlay_color
-            scaled_rgb = scaled_rgb / np.max(scaled_rgb)
-
-            rgb_list.append(scaled_rgb)
-        return rgb_list
+        return annihilations_df, coalescence_df
 
     # Utility functions
 
