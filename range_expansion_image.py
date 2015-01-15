@@ -24,6 +24,7 @@ class Range_Expansion_Experiment():
         self.path_dict['doctored_edges_folder'] = base_folder + 'edges_doctored/'
         self.path_dict['masks_folder'] = base_folder + 'masks/'
         self.path_dict['tif_folder'] = base_folder + 'tif/'
+        self.path_dict['annihilation_folder'] = base_folder + 'annihilation_and_coalescence/'
 
         self.image_set_list = None
 
@@ -185,6 +186,11 @@ class Image_Set():
         self.image_name = image_name
         self.path_dict = path_dict
         self.bioformats_xml = Bioformats_XML(self.path_dict['tif_folder'] + self.image_name)
+
+        # Add path to coalescence & annihilations
+        image_name_without_extension = self.image_name.split('.')[0]
+        self.annihilation_txt_path = self.path_dict['annihilation_folder'] + image_name_without_extension + '_annih.txt'
+        self.coalescence_txt_path = self.path_dict['annihilation_folder']  + image_name_without_extension + '_coal.txt'
 
         self.circle_mask = None
         self.edges_mask = None
