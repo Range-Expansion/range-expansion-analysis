@@ -101,7 +101,7 @@ class Range_Expansion_Experiment():
 
         return result
 
-    def get_edge_density_averaged(self, im_sets_to_use, num_r_bins=800):
+    def get_overlap_density_averaged(self, im_sets_to_use, num_overlap, num_r_bins=800):
         '''Assumes that the images are already setup.'''
 
         # Get the maximum radius to bin, first of all
@@ -115,14 +115,14 @@ class Range_Expansion_Experiment():
         # Set up binning
         rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
 
-        edge_df_list = []
+        overlap_df_list = []
         # Loop through im_sets, bin at each r
         for im_set_index in im_sets_to_use:
             cur_im = self.image_set_list[im_set_index]
-            edge_df = cur_im.get_edge_df()
-            edge_df_list.append(edge_df)
+            edge_df = cur_im.get_overlap_df(num_overlap)
+            overlap_df_list.append(edge_df)
 
-        mean_list = self.bin_multiple_df_on_r_getmean(edge_df_list, max_r_scaled, num_r_bins=num_r_bins)
+        mean_list = self.bin_multiple_df_on_r_getmean(overlap_df_list, max_r_scaled, num_r_bins=num_r_bins)
         # Combine the list of each experiment
         combined_mean_df = pd.concat(mean_list)
         # Group by the index
