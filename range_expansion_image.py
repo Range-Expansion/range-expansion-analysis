@@ -466,7 +466,7 @@ class Image_Set():
         sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
         for i in range(self.channel_masks.shape[0]):
             sum_mask += self.channel_masks[i, :, :]
-        edges = sum_mask > num_overlap
+        edges = sum_mask >= num_overlap
         return edges
 
 
