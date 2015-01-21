@@ -182,9 +182,12 @@ class Range_Expansion_Experiment():
         return result
 
 class Image_Set():
-    def __init__(self, image_name, path_dict):
+    def __init__(self, image_name, path_dict, cache=True):
+        '''If cache is passed, a ton of memory is used but things will go MUCH faster.'''
         self.image_name = image_name
         self.path_dict = path_dict
+        self.cache= cache
+
         self.bioformats_xml = Bioformats_XML(self.path_dict['tif_folder'] + self.image_name)
 
         # Add path to coalescence & annihilations
@@ -207,29 +210,103 @@ class Image_Set():
         self.max_radius = None
         self.max_radius_scaled = None
 
+
+    ###### Circular Mask ######
+    @property
+    def circle_mask(self):
+        '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
+        if self.circle_mask is None:
+            try:
+                temp_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
+            except IOError:
+                print 'No circle mask found!'
+                return None
+            if self.cache:
+                self.circle_mask = temp_mask
+        else:
+            return self.circle_mask
+
+    @circle_mask.setter
+    def circle_mask(self, value):
+        self.circle_mask = value
+
+    @circle_mask.deleter
+    def circle_mask(self):
+        del self.circle_mask
+
+    ###### Edges Mask ######
+    @property
+    def edges_mask(self):
+        '''Returns the edge binary image.'''
+        if self.edges_mask is None:
+            try:
+                temp_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
+            except IOError:
+                print 'No edges mask found!'
+                return None
+            if self.cache:
+                self.edges_mask = temp_mask
+        else:
+            return self.edges_mask
+
+    @edges_mask.setter
+    def edges_mask(self, value):
+        self.edges_mask = value
+
+    @edges_mask.deleter
+    def edges_mask(self):
+        del self.edges_mask
+
+    ######## Doctored Edges Mask ########
+    @property
+    def doctored_edges_mask(self):
+        '''Returns the edge binary image.'''
+        if self.doctored_edges_mask is None:
+            try:
+                temp_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
+            except IOError:
+                print 'No doctored edges mask found!'
+                return None
+            if self.cache:
+                self.doctored_edges_mask = temp_mask
+        else:
+            return self.doctored_edges_mask
+
+    @doctored_edges_mask.setter
+    def doctored_edges_mask(self, value):
+        self.doctored_edges_mask = value
+
+    @doctored_edges_mask.deleter
+    def doctored_edges_mask(self):
+        del self.doctored_edges_mask
+
+    ######### Channel Masks ########
+    @property
+    def channel_masks(self):
+        '''Returns the mask of each channel.'''
+        if self.channel_masks is None:
+            try:
+                temp_mask = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
+            except IOError:
+                print 'No channel masks found!'
+                return None
+            if self.cache:
+                self.channel_masks = temp_mask
+        else:
+            return self.channel_masks
+
+    @channel_masks.setter
+    def channel_masks(self, value):
+        self.channel_masks = value
+
+    @channel_masks.deleter
+    def channel_masks(self):
+        del self.channel_masks
+
+    ####### Main Functions #######
+
     def finish_setup(self):
         '''This step takes a lot of time & memory but vastly speeds up future computation.'''
-
-        # Circle mask
-        try:
-            self.circle_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
-        except IOError:
-            print 'No circle mask found!'
-        # Edges mask
-        try:
-            self.edges_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
-        except IOError:
-            print 'No edges mask found!'
-        # Doctored edges mask
-        try:
-            self.doctored_edges_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
-        except IOError:
-            print 'No doctored edges mask found!'
-        # Channel mask
-        try:
-            self.channel_masks = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
-        except IOError:
-            print 'No channel masks found!'
 
         # Find max radius in brightfield mask; needed for other functions
         self.max_radius = self.get_max_radius()
