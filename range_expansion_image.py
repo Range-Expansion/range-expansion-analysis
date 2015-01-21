@@ -362,20 +362,26 @@ class Image_Set():
 
     def get_color_fractions(self):
         cur_channel_mask = self.channel_mask
-        sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
-        for i in range(cur_channel_mask.shape[0]):
-            sum_mask += cur_channel_mask[i, :, :]
+        if cur_channel_mask is not None:
+            sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
+            for i in range(cur_channel_mask.shape[0]):
+                sum_mask += cur_channel_mask[i, :, :]
 
-        # Now divide each channel by the sum
-        fractions = self.channel_mask / sum_mask.astype(np.float)
-        fractions[np.isnan(fractions)] = 0
-        return fractions
+            # Now divide each channel by the sum
+            fractions = self.channel_mask / sum_mask.astype(np.float)
+            fractions[np.isnan(fractions)] = 0
+            return fractions
+        else:
+            print 'Cannot determine color fractions because there is no channel mask.'
+            return None
 
     def get_center(self):
         '''Returns the mean center as the standard error of the mean'''
+        cur_circle_mask = self.circle_mask
+
         center_list = []
-        for i in range(self.circle_mask.shape[0]):
-            cur_image = self.circle_mask[i, :, :]
+        for i in range(cur_circle_mask.shape[0]):
+            cur_image = cur_circle_mask[i, :, :]
             label_image = ski.measure.label(cur_image, neighbors=8)
             props = ski.measure.regionprops(label_image)
             for p in props:
@@ -389,9 +395,11 @@ class Image_Set():
         return av_center, std_err
 
     def get_max_radius(self):
+        cur_circle_mask = self.circle_mask
+
         diameter_list = []
-        for i in range(self.circle_mask.shape[0]):
-            cur_image = self.circle_mask[i, :, :]
+        for i in range(cur_circle_mask.shape[0]):
+            cur_image = cur_circle_mask[i, :, :]
             # Find maximum diameter
             r, c = np.where(cur_image)
             diameter = np.float(r.max() - r.min())
