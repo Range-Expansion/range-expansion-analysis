@@ -220,9 +220,7 @@ class Image_Set():
     @property
     def circle_mask(self):
         '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
-        print 'waka'
         if self._circle_mask is None:
-            print 'wakadaka'
             try:
                 temp_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
@@ -230,6 +228,8 @@ class Image_Set():
                 return None
             if self.cache:
                 self._circle_mask = temp_mask
+            else:
+                return temp_mask
         else:
             return self._circle_mask
 
@@ -253,6 +253,8 @@ class Image_Set():
                 return None
             if self.cache:
                 self._edges_mask = temp_mask
+            else:
+                return temp_mask
         else:
             return self._edges_mask
 
@@ -276,6 +278,8 @@ class Image_Set():
                 return None
             if self.cache:
                 self._doctored_edges_mask = temp_mask
+            else:
+                return temp_mask
         else:
             return self._doctored_edges_mask
 
@@ -299,6 +303,8 @@ class Image_Set():
                 return None
             if self.cache:
                 self._channel_mask = temp_mask
+            else:
+                return temp_mask
         else:
             return self._channel_mask
 
@@ -322,6 +328,8 @@ class Image_Set():
                 return None
             if self.cache:
                 self._image= temp_image
+            else:
+                return temp_image
         else:
             return self._image
 
@@ -353,9 +361,10 @@ class Image_Set():
         self.frac_df_list = self.get_channel_frac_df()
 
     def get_color_fractions(self):
-        sum_mask = np.zeros((self.channel_mask.shape[1], self.channel_mask.shape[2]))
-        for i in range(self.channel_mask.shape[0]):
-            sum_mask += self.channel_mask[i, :, :]
+        cur_channel_mask = self.channel_mask
+        sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
+        for i in range(cur_channel_mask.shape[0]):
+            sum_mask += cur_channel_mask[i, :, :]
 
         # Now divide each channel by the sum
         fractions = self.channel_mask / sum_mask.astype(np.float)
