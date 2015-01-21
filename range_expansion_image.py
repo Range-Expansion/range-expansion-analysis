@@ -433,14 +433,18 @@ class Image_Set():
     def get_channel_frac_df(self):
 
         df_list = []
-        for frac in self.fractions:
-            df = self.image_coordinate_df.copy()
-            df['f'] = frac.ravel()
-            # Only keep data less than the maximum radius!
-            df = df[df['radius'] < self.max_radius]
+        if self.fractions is not None:
+            for frac in self.fractions:
+                df = self.image_coordinate_df.copy()
+                df['f'] = frac.ravel()
+                # Only keep data less than the maximum radius!
+                df = df[df['radius'] < self.max_radius]
 
-            df_list.append(df)
-        return df_list
+                df_list.append(df)
+            return df_list
+        else:
+            print 'I cannot determine the fraction dataframe since the fractions image is None'
+            return None
 
     def bin_image_coordinate_r_df(self, df):
         max_r_ceil = np.floor(df['radius'].max())
