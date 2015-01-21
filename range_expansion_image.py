@@ -228,6 +228,7 @@ class Image_Set():
                 return None
             if self.cache:
                 self._circle_mask = temp_mask
+                return self._circle_mask
             else:
                 return temp_mask
         else:
@@ -253,6 +254,7 @@ class Image_Set():
                 return None
             if self.cache:
                 self._edges_mask = temp_mask
+                return self._edges_mask
             else:
                 return temp_mask
         else:
@@ -278,6 +280,7 @@ class Image_Set():
                 return None
             if self.cache:
                 self._doctored_edges_mask = temp_mask
+                return self._doctored_edges_mask
             else:
                 return temp_mask
         else:
@@ -303,6 +306,7 @@ class Image_Set():
                 return None
             if self.cache:
                 self._channel_mask = temp_mask
+                return self._channel_mask
             else:
                 return temp_mask
         else:
@@ -328,6 +332,7 @@ class Image_Set():
                 return None
             if self.cache:
                 self._image= temp_image
+                return self._image
             else:
                 return temp_image
         else:
