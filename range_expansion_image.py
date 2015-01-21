@@ -198,12 +198,14 @@ class Image_Set():
         self.annihilation_txt_path = self.path_dict['annihilation_folder'] + image_name_without_extension + '_annih.txt'
         self.coalescence_txt_path = self.path_dict['annihilation_folder']  + image_name_without_extension + '_coal.txt'
 
-        self.circle_mask = None
-        self.edges_mask = None
-        self.doctored_edges_mask = None
-        self.channels_mask = None
+        self._circle_mask = None
+        self._edges_mask = None
+        self._doctored_edges_mask = None
+        self._channel_mask = None
+        self._image = None
+
         self.color_fractions = None
-        self.image = None
+
 
         # Other useful stuff for data analysis
         self.image_coordinate_df = None
@@ -218,93 +220,118 @@ class Image_Set():
     @property
     def circle_mask(self):
         '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
-        if self.circle_mask is None:
+        print 'waka'
+        if self._circle_mask is None:
+            print 'wakadaka'
             try:
                 temp_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
                 print 'No circle mask found!'
                 return None
             if self.cache:
-                self.circle_mask = temp_mask
+                self._circle_mask = temp_mask
         else:
-            return self.circle_mask
+            return self._circle_mask
 
     @circle_mask.setter
     def circle_mask(self, value):
-        self.circle_mask = value
+        self._circle_mask = value
 
     @circle_mask.deleter
     def circle_mask(self):
-        del self.circle_mask
+        del self._circle_mask
 
     ###### Edges Mask ######
     @property
     def edges_mask(self):
         '''Returns the edge binary image.'''
-        if self.edges_mask is None:
+        if self._edges_mask is None:
             try:
                 temp_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
                 print 'No edges mask found!'
                 return None
             if self.cache:
-                self.edges_mask = temp_mask
+                self._edges_mask = temp_mask
         else:
-            return self.edges_mask
+            return self._edges_mask
 
     @edges_mask.setter
     def edges_mask(self, value):
-        self.edges_mask = value
+        self._edges_mask = value
 
     @edges_mask.deleter
     def edges_mask(self):
-        del self.edges_mask
+        del self._edges_mask
 
     ######## Doctored Edges Mask ########
     @property
     def doctored_edges_mask(self):
         '''Returns the edge binary image.'''
-        if self.doctored_edges_mask is None:
+        if self._doctored_edges_mask is None:
             try:
                 temp_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
                 print 'No doctored edges mask found!'
                 return None
             if self.cache:
-                self.doctored_edges_mask = temp_mask
+                self._doctored_edges_mask = temp_mask
         else:
-            return self.doctored_edges_mask
+            return self._doctored_edges_mask
 
     @doctored_edges_mask.setter
     def doctored_edges_mask(self, value):
-        self.doctored_edges_mask = value
+        self._doctored_edges_mask = value
 
     @doctored_edges_mask.deleter
     def doctored_edges_mask(self):
-        del self.doctored_edges_mask
+        del self._doctored_edges_mask
 
     ######### Channel Masks ########
     @property
-    def channel_masks(self):
+    def channel_mask(self):
         '''Returns the mask of each channel.'''
-        if self.channel_masks is None:
+        if self._channel_mask is None:
             try:
                 temp_mask = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
                 print 'No channel masks found!'
                 return None
             if self.cache:
-                self.channel_masks = temp_mask
+                self._channel_mask = temp_mask
         else:
-            return self.channel_masks
+            return self._channel_mask
 
-    @channel_masks.setter
-    def channel_masks(self, value):
-        self.channel_masks = value
+    @channel_mask.setter
+    def channel_mask(self, value):
+        self.channel_mask = value
 
-    @channel_masks.deleter
-    def channel_masks(self):
-        del self.channel_masks
+    @channel_mask.deleter
+    def channel_mask(self):
+        del self.channel_mask
+
+    ######## Image ######
+    @property
+    def image(self):
+        '''Returns the original image.'''
+        if self._image is None:
+            try:
+                temp_image= ski.io.imread(self.path_dict['tif_folder'] + self.image_name, plugin='tifffile')
+            except IOError:
+                print 'No original image found! This is weird...'
+                return None
+            if self.cache:
+                self._image= temp_image
+        else:
+            return self._image
+
+    @image.setter
+    def image(self, value):
+        self._image = value
+
+    @image.deleter
+    def image(self):
+        del self._image
 
     ####### Main Functions #######
 
@@ -318,9 +345,6 @@ class Image_Set():
         # Based on this information, calculate fractions
         self.fractions = self.get_color_fractions()
 
-        # Read the original image too
-        self.image = ski.io.imread(self.path_dict['tif_folder'] + self.image_name, plugin='tifffile')
-
         # Initialize image coordinate df
         self.image_coordinate_df = self.get_image_coordinate_df()
         self.image_coordinate_df_max_radius = self.image_coordinate_df[self.image_coordinate_df['radius'] < self.max_radius]
@@ -329,12 +353,12 @@ class Image_Set():
         self.frac_df_list = self.get_channel_frac_df()
 
     def get_color_fractions(self):
-        sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
-        for i in range(self.channel_masks.shape[0]):
-            sum_mask += self.channel_masks[i, :, :]
+        sum_mask = np.zeros((self.channel_mask.shape[1], self.channel_mask.shape[2]))
+        for i in range(self.channel_mask.shape[0]):
+            sum_mask += self.channel_mask[i, :, :]
 
         # Now divide each channel by the sum
-        fractions = self.channel_masks / sum_mask.astype(np.float)
+        fractions = self.channel_mask / sum_mask.astype(np.float)
         fractions[np.isnan(fractions)] = 0
         return fractions
 
@@ -543,9 +567,9 @@ class Image_Set():
 
     def get_overlap_image(self, num_overlap):
         #sum_mask counts how many different colors are at each pixel
-        sum_mask = np.zeros((self.channel_masks.shape[1], self.channel_masks.shape[2]))
-        for i in range(self.channel_masks.shape[0]):
-            sum_mask += self.channel_masks[i, :, :]
+        sum_mask = np.zeros((self.channel_mask.shape[1], self.channel_mask.shape[2]))
+        for i in range(self.channel_mask.shape[0]):
+            sum_mask += self.channel_mask[i, :, :]
         edges = sum_mask >= num_overlap
         return edges
 
