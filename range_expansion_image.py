@@ -17,7 +17,10 @@ import numpy as np
 import scipy as sp
 
 class Range_Expansion_Experiment():
-    def __init__(self, base_folder):
+    def __init__(self, base_folder, cache=True):
+        '''Cache determines whether data is cached; it can vastly speed up everything.'''
+        self.cache = cache
+
         self.path_dict = {}
         self.path_dict['circle_folder'] = base_folder + 'circle_radius/'
         self.path_dict['edges_folder'] = base_folder + 'edges/'
@@ -41,7 +44,7 @@ class Range_Expansion_Experiment():
         self.image_set_list = []
 
         for cur_name in image_names:
-            im_set = Image_Set(cur_name, self.path_dict)
+            im_set = Image_Set(cur_name, self.path_dict, cache=self.cache)
             self.image_set_list.append(im_set)
 
     ## Work with Averaging multiple sets of data
