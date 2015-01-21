@@ -443,7 +443,7 @@ class Image_Set():
                 df_list.append(df)
             return df_list
         else:
-            print 'I cannot determine the fraction dataframe since the fractions image is None'
+            print 'I cannot determine the fraction dataframe; fractions image is None'
             return None
 
     def bin_image_coordinate_r_df(self, df):
