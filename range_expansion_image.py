@@ -30,6 +30,7 @@ class Range_Expansion_Experiment():
         self.path_dict['masks_folder'] = base_folder + 'masks/'
         self.path_dict['tif_folder'] = base_folder + 'tif/'
         self.path_dict['annihilation_folder'] = base_folder + 'annihilation_and_coalescence/'
+        self.path_dict['homeland_folder'] = base_folder + 'homeland/'
 
         self.image_set_list = None
 
@@ -217,6 +218,7 @@ class Image_Set():
         self.max_radius = None
         self.max_radius_scaled = None
 
+        self._homeland_mask = None
         self.homeland_edge_radius = None
         self.homeland_edge_radius_scaled = None
 
@@ -246,6 +248,32 @@ class Image_Set():
     @circle_mask.deleter
     def circle_mask(self):
         del self._circle_mask
+
+    ###### Homeland Mask ######
+    @property
+    def homeland_mask(self):
+        '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
+        if self._homeland_mask is None:
+            try:
+                temp_mask = ski.io.imread(self.path_dict['homeland_folder'] + self.image_name, plugin='tifffile') > 0
+            except IOError:
+                print 'No circle mask found!'
+                return None
+            if self.cache:
+                self._homeland_mask = temp_mask
+                return self._homeland_mask
+            else:
+                return temp_mask
+        else:
+            return self._homeland_mask
+
+    @homeland_mask.setter
+    def homeland_mask(self, value):
+        self._homeland_mask = value
+
+    @homeland_mask.deleter
+    def homeland_mask(self):
+        del self._homeland_mask
 
     ###### Edges Mask ######
     @property
@@ -360,6 +388,9 @@ class Image_Set():
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
 
+        self.homeland_edge_radius = self.get_homeland_radius()
+        self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+
         # Based on this information, calculate fractions
         self.fractions = self.get_color_fractions()
 
@@ -418,6 +449,12 @@ class Image_Set():
         # Now find the mean radius
         max_radius = int(np.floor(diameter_list.mean()/2))
         return max_radius
+
+    def get_homeland_radius(self):
+        cur_homeland_mask = self.homeland_mask
+        r, c = np.where(cur_homeland_mask)
+        diameter = np.float(r.max() - r.min())
+        return np.ceil(diameter/2)
 
     def get_image_coordinate_df(self):
         '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
