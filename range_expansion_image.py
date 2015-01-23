@@ -651,7 +651,7 @@ class Image_Set():
 
     def get_edge_skeleton(self):
         '''Gets the pruned skeleton for any edges.'''
-        all_edges = self.get_overlap_image(3)
+        all_edges = self.get_overlap_image(2)
         # Filter out the homeland
         new_im_df = self.image_coordinate_df.copy()
         new_im_df['values'] = all_edges.ravel()
