@@ -652,13 +652,8 @@ class Image_Set():
     def get_edge_skeleton(self):
         '''Gets the pruned skeleton for any edges.'''
         all_edges = self.get_overlap_image(2)
-        # Filter out the homeland
-        new_im_df = self.image_coordinate_df.copy()
-        new_im_df['values'] = all_edges.ravel()
-        new_im_df = new_im_df[new_im_df['radius'] > self.homeland_edge_radius]
-        # I could probably just do a distance transform...
-        all_edges = np.zeros_like(all_edges)
-        all_edges[new_im_df['r'], new_im_df['c']] = new_im_df['values']
+        # Filter out the homeland; just multiply by the inverse mask!
+        all_edges = np.logical_and(all_edges, np.logical_not(self.homeland_mask))
         all_edges = ski.morphology.closing(all_edges, ski.morphology.square(5))
 
         skeleton = mh.thin(all_edges > 0)
@@ -670,8 +665,8 @@ class Image_Set():
     def get_annih_and_coal(self):
         cur_annihilations = pd.read_csv(self.annihilation_txt_path, sep='\t')
         cur_coalescences = pd.read_csv(self.coalescence_txt_path, sep='\t')
-        annihilations_df = pd.merge(cur_annihilations, self.image_coordinate_df, on=['r', 'c'] )
-        coalescence_df = pd.merge(cur_coalescences, self.image_coordinate_df, on=['r', 'c'] )
+        annihilations_df = pd.merge(cur_annihilations, self.image_coordinate_df, on=['r', 'c'])
+        coalescence_df = pd.merge(cur_coalescences, self.image_coordinate_df, on=['r', 'c'])
 
         return annihilations_df, coalescence_df
 
