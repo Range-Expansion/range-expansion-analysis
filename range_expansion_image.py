@@ -15,6 +15,8 @@ import os
 import pandas as pd
 import numpy as np
 import scipy as sp
+import pymorph as pm
+import mahotas as mh
 
 class Range_Expansion_Experiment():
     def __init__(self, base_folder, cache=True):
@@ -214,6 +216,9 @@ class Image_Set():
         # Information about the maximum radius of the data we care about
         self.max_radius = None
         self.max_radius_scaled = None
+
+        self.homeland_edge_radius = None
+        self.homeland_edge_radius_scaled = None
 
 
     ###### Circular Mask ######
@@ -607,6 +612,23 @@ class Image_Set():
         edge_df = edge_df[edge_df['radius'] < self.max_radius]
         return edge_df
 
+    def get_edge_skeleton(self):
+        '''Gets the pruned skeleton for any edges.'''
+        all_edges = self.get_overlap_image(3)
+        # Filter out the homeland
+        new_im_df = self.image_coordinate_df.copy()
+        new_im_df['values'] = all_edges.ravel()
+        new_im_df = new_im_df[new_im_df['radius'] > self.homeland_edge_radius]
+        # I could probably just do a distance transform...
+        all_edges = np.zeros_like(all_edges)
+        all_edges[new_im_df['r'], new_im_df['c']] = new_im_df['values']
+        all_edges = ski.morphology.closing(all_edges, ski.morphology.square(5))
+
+        skeleton = mh.thin(all_edges > 0)
+        pruned = pruning(skeleton, 20)
+
+        return pruned
+
     #### Annihilations and Coalescences ####
     def get_annih_and_coal(self):
         cur_annihilations = pd.read_csv(self.annihilation_txt_path, sep='\t')
@@ -688,3 +710,80 @@ class Bioformats_XML():
                             if greatchild.tag.endswith('Channel'):
                                 temp_channels.append(greatchild)
                         self.channel_nodes.append(temp_channels)
+
+##### Pruning Functions: Pulled from online. I should really learn this at some point! #####
+
+def branchedPoints(skel):
+    branch1=np.array([[2, 1, 2], [1, 1, 1], [2, 2, 2]])
+    branch2=np.array([[1, 2, 1], [2, 1, 2], [1, 2, 1]])
+    branch3=np.array([[1, 2, 1], [2, 1, 2], [1, 2, 2]])
+    branch4=np.array([[2, 1, 2], [1, 1, 2], [2, 1, 2]])
+    branch5=np.array([[1, 2, 2], [2, 1, 2], [1, 2, 1]])
+    branch6=np.array([[2, 2, 2], [1, 1, 1], [2, 1, 2]])
+    branch7=np.array([[2, 2, 1], [2, 1, 2], [1, 2, 1]])
+    branch8=np.array([[2, 1, 2], [2, 1, 1], [2, 1, 2]])
+    branch9=np.array([[1, 2, 1], [2, 1, 2], [2, 2, 1]])
+    br1=mh.morph.hitmiss(skel,branch1)
+    br2=mh.morph.hitmiss(skel,branch2)
+    br3=mh.morph.hitmiss(skel,branch3)
+    br4=mh.morph.hitmiss(skel,branch4)
+    br5=mh.morph.hitmiss(skel,branch5)
+    br6=mh.morph.hitmiss(skel,branch6)
+    br7=mh.morph.hitmiss(skel,branch7)
+    br8=mh.morph.hitmiss(skel,branch8)
+    br9=mh.morph.hitmiss(skel,branch9)
+    return br1+br2+br3+br4+br5+br6+br7+br8+br9
+
+def endPoints(skel):
+    endpoint1=np.array([[0, 0, 0],
+                        [0, 1, 0],
+                        [2, 1, 2]])
+
+    endpoint2=np.array([[0, 0, 0],
+                        [0, 1, 2],
+                        [0, 2, 1]])
+
+    endpoint3=np.array([[0, 0, 2],
+                        [0, 1, 1],
+                        [0, 0, 2]])
+
+    endpoint4=np.array([[0, 2, 1],
+                        [0, 1, 2],
+                        [0, 0, 0]])
+
+    endpoint5=np.array([[2, 1, 2],
+                        [0, 1, 0],
+                        [0, 0, 0]])
+
+    endpoint6=np.array([[1, 2, 0],
+                        [2, 1, 0],
+                        [0, 0, 0]])
+
+    endpoint7=np.array([[2, 0, 0],
+                        [1, 1, 0],
+                        [2, 0, 0]])
+
+    endpoint8=np.array([[0, 0, 0],
+                        [2, 1, 0],
+                        [1, 2, 0]])
+
+    ep1=mh.morph.hitmiss(skel,endpoint1)
+    ep2=mh.morph.hitmiss(skel,endpoint2)
+    ep3=mh.morph.hitmiss(skel,endpoint3)
+    ep4=mh.morph.hitmiss(skel,endpoint4)
+    ep5=mh.morph.hitmiss(skel,endpoint5)
+    ep6=mh.morph.hitmiss(skel,endpoint6)
+    ep7=mh.morph.hitmiss(skel,endpoint7)
+    ep8=mh.morph.hitmiss(skel,endpoint8)
+    ep = ep1+ep2+ep3+ep4+ep5+ep6+ep7+ep8
+    return ep
+
+def pruning(skeleton, size):
+    '''remove iteratively end points "size"
+       times from the skeleton
+    '''
+    for i in range(0, size):
+        endpoints = endPoints(skeleton)
+        endpoints = np.logical_not(endpoints)
+        skeleton = np.logical_and(skeleton,endpoints)
+    return skeleton
