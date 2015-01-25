@@ -212,7 +212,6 @@ class Image_Set():
 
         # Other useful stuff for data analysis
         self.image_coordinate_df = None
-        self.image_coordinate_df_max_radius = None
         self.frac_df_list = None
         # Information about the maximum radius of the data we care about
         self.max_radius = None
