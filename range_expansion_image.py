@@ -387,8 +387,8 @@ class Image_Set():
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
 
-        self.homeland_edge_radius = self.get_homeland_radius()
-        self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+        #self.homeland_edge_radius = self.get_homeland_radius()
+        #self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
 
         # Based on this information, calculate fractions
         self.fractions = self.get_color_fractions()
@@ -428,7 +428,8 @@ class Image_Set():
                 # There should only be one property
                 center_list.append(p['centroid'])
         center_list = np.asarray(center_list)
-        center_df = pd.DataFrame(data = center_list, columns=('r', 'c'))
+        # In this weird case, it is c,r!
+        center_df = pd.DataFrame(data = center_list, columns=('c', 'r'))
         av_center = center_df.mean()
         std_err = center_df.apply(lambda x: sp.stats.sem(x, ddof=2))
 
