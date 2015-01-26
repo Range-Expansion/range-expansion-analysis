@@ -639,11 +639,13 @@ class Image_Set():
         for i in range(self.channel_mask.shape[0]):
             sum_mask += self.channel_mask[i, :, :]
         edges = sum_mask >= num_overlap
+
         return edges
 
 
     def get_overlap_df(self, num_overlap):
         edge_image = self.get_overlap_image(num_overlap)
+
         edge_df = self.image_coordinate_df.copy()
         edge_df['overlap'] = edge_image.ravel()
         edge_df = edge_df[edge_df['radius'] < self.max_radius]
