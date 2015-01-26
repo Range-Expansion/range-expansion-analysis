@@ -207,12 +207,12 @@ class Image_Set():
         self._channel_mask = None
         self._image = None
 
-        self.color_fractions = None
-
+        self._fractions = None
 
         # Other useful stuff for data analysis
-        self.image_coordinate_df = None
-        self.frac_df_list = None
+        self._image_coordinate_df = None
+        self._frac_df_list = None
+
         # Information about the maximum radius of the data we care about
         self.max_radius = None
         self.max_radius_scaled = None
@@ -256,7 +256,7 @@ class Image_Set():
             try:
                 temp_mask = ski.io.imread(self.path_dict['homeland_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
-                print 'No circle mask found!'
+                print 'No homeland mask found!'
                 return None
             if self.cache:
                 self._homeland_mask = temp_mask
@@ -378,27 +378,78 @@ class Image_Set():
     def image(self):
         del self._image
 
+    ###### Fractions ######
+
+    @property
+    def fractions(self):
+        '''Returns the color fractions.'''
+        if self._fractions is None:
+            temp_fractions = self.get_color_fractions()
+            if self.cache:
+                self._fractions = temp_fractions
+            return temp_fractions
+        else:
+            return self._fractions
+
+    @fractions.setter
+    def fractions(self, value):
+        self._fractions = value
+
+    @fractions.deleter
+    def fractions(self):
+        del self._fractions
+
+    ####### Image Coordinate df ####
+    @property
+    def image_coordinate_df(self):
+        if self._image_coordinate_df is None:
+            temp_coordinate_df = self.get_image_coordinate_df()
+            if self.cache:
+                self.image_coordinate_df = temp_coordinate_df
+            return temp_coordinate_df
+        else:
+            return self._image_coordinate_df
+
+    @image_coordinate_df.setter
+    def image_coordinate_df(self, value):
+        self._image_coordinate_df = value
+
+    @image_coordinate_df.deleter
+    def image_coordinate_df(self):
+        del self._image_coordinate_df
+
+    ###### Fractional df list #####
+    @property
+    def frac_df_list(self):
+        if self._frac_df_list is None:
+            temp_list = self.get_channel_frac_df()
+            if self.cache:
+                self._frac_df_list = temp_list
+            return temp_list
+        else:
+            return self._frac_df_list
+
+    @frac_df_list.setter
+    def frac_df_list(self, value):
+        self._frac_df_list = value
+
+    @frac_df_list.deleter
+    def frac_df_list(self):
+        del self._frac_df_list
+
     ####### Main Functions #######
 
     def finish_setup(self):
-        '''This step takes a lot of time & memory but vastly speeds up future computation.'''
+        '''This step used to cache all the above properties but took up too much memory.'''
 
         # Find max radius in brightfield mask; needed for other functions
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
 
-        #self.homeland_edge_radius = self.get_homeland_radius()
-        #self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+        self.homeland_edge_radius = self.get_homeland_radius()
+        if self.homeland_edge_radius is not None:
+            self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
 
-        # Based on this information, calculate fractions
-        self.fractions = self.get_color_fractions()
-
-        # Initialize image coordinate df
-        self.image_coordinate_df = self.get_image_coordinate_df()
-        self.image_coordinate_df_max_radius = self.image_coordinate_df[self.image_coordinate_df['radius'] < self.max_radius]
-
-        # Initialize channel fraction df
-        self.frac_df_list = self.get_channel_frac_df()
 
     def get_color_fractions(self):
         cur_channel_mask = self.channel_mask
@@ -408,7 +459,7 @@ class Image_Set():
                 sum_mask += cur_channel_mask[i, :, :]
 
             # Now divide each channel by the sum
-            fractions = self.channel_mask / sum_mask.astype(np.float)
+            fractions = cur_channel_mask / sum_mask.astype(np.float)
             fractions[np.isnan(fractions)] = 0
             return fractions
         else:
@@ -451,9 +502,11 @@ class Image_Set():
 
     def get_homeland_radius(self):
         cur_homeland_mask = self.homeland_mask
-        r, c = np.where(cur_homeland_mask)
-        diameter = np.float(r.max() - r.min())
-        return np.ceil(diameter/2)
+        if cur_homeland_mask is not None:
+            r, c = np.where(cur_homeland_mask)
+            diameter = np.float(r.max() - r.min())
+            return np.ceil(diameter/2)
+        return None
 
     def get_image_coordinate_df(self):
         '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
