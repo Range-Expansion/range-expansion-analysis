@@ -563,7 +563,9 @@ class Image_Set():
         delta_theta = delta_x / float(r)
         theta_bins = np.arange(-np.pi - .5*delta_theta, np.pi + .5*delta_theta, delta_theta)
 
-        for frac in self.frac_df_list:
+        cur_frac_df_list = self.frac_df_list
+
+        for frac in cur_frac_df_list:
             # First get the theta at the desired r; r should be an int
             theta_df = frac[(frac['radius'] >= r - delta_x/2.) & (frac['radius'] < r + delta_x/2.)]
             if not theta_df[theta_df.isnull().any(axis=1)].empty:
@@ -615,10 +617,12 @@ class Image_Set():
     def get_local_hetero_df(self):
         local_hetero = np.zeros(self.frac_df_list[0].shape[0])
 
+        cur_frac_df_list = self.frac_df_list
+
         for j in range(len(self.frac_df_list)):
-            result = self.frac_df_list[j]['f']*(1-self.frac_df_list[j]['f'])
+            result = cur_frac_df_list[j]['f']*(1-cur_frac_df_list[j]['f'])
             local_hetero += result
-        hetero_df = self.image_coordinate_df_max_radius.copy()
+        hetero_df = self.image_coordinate_df.copy()
         hetero_df['h'] = local_hetero
         return hetero_df
 
@@ -687,9 +691,10 @@ class Image_Set():
 
     def get_overlap_image(self, num_overlap):
         #sum_mask counts how many different colors are at each pixel
-        sum_mask = np.zeros((self.channel_mask.shape[1], self.channel_mask.shape[2]))
-        for i in range(self.channel_mask.shape[0]):
-            sum_mask += self.channel_mask[i, :, :]
+        cur_channel_mask = self.channel_mask
+        sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
+        for i in range(cur_channel_mask.shape[0]):
+            sum_mask += cur_channel_mask[i, :, :]
         edges = sum_mask >= num_overlap
 
         return edges
