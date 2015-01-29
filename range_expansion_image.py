@@ -678,6 +678,8 @@ class Image_Set():
                     draw_different = self.fractions[i] * self.fractions[j]
                     local_hetero_mask += draw_different
 
+        return local_hetero_mask
+
     def get_frac_in_one_df(self):
         '''A utility function that combines all fractions in one list.'''
         new_df = self.frac_df_list[0].copy()
