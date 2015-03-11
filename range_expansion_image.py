@@ -221,6 +221,14 @@ class Image_Set():
         self.homeland_edge_radius = None
         self.homeland_edge_radius_scaled = None
 
+        # Initialize rest of required stuff
+        self.max_radius = self.get_max_radius()
+        self.max_radius_scaled = self.max_radius * self.get_scaling()
+
+        self.homeland_edge_radius = self.get_homeland_radius()
+        if self.homeland_edge_radius is not None:
+            self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+
 
     ###### Circular Mask ######
     @property
@@ -439,18 +447,6 @@ class Image_Set():
 
     ####### Main Functions #######
 
-    def finish_setup(self):
-        '''This step used to cache all the above properties but took up too much memory.'''
-
-        # Find max radius in brightfield mask; needed for other functions
-        self.max_radius = self.get_max_radius()
-        self.max_radius_scaled = self.max_radius * self.get_scaling()
-
-        self.homeland_edge_radius = self.get_homeland_radius()
-        if self.homeland_edge_radius is not None:
-            self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
-
-
     def get_color_fractions(self):
         cur_channel_mask = self.channel_mask
         if cur_channel_mask is not None:
@@ -532,8 +528,11 @@ class Image_Set():
     def get_channel_frac_df(self):
 
         df_list = []
-        if self.fractions is not None:
-            for frac in self.fractions:
+
+        cur_fractions = self.fractions
+
+        if cur_fractions is not None:
+            for frac in cur_fractions:
                 df = self.image_coordinate_df.copy()
                 df['f'] = frac.ravel()
                 # Only keep data less than the maximum radius!
@@ -682,9 +681,10 @@ class Image_Set():
 
     def get_frac_in_one_df(self):
         '''A utility function that combines all fractions in one list.'''
-        new_df = self.frac_df_list[0].copy()
+        cur_frac_df_list = self.frac_df_list
+        new_df = cur_frac_df_list[0].copy()
         new_df = new_df.rename(columns={'f':'f0'})
-        for i in range(1, len(self.frac_df_list)):
+        for i in range(1, len(cur_frac_df_list)):
             f_str = 'f' + str(i)
             new_df[f_str] = self.frac_df_list[i]['f']
         return new_df
