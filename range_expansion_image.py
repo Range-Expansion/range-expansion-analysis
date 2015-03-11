@@ -52,7 +52,8 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
-    def bin_multiple_df_on_r_getmean(self, df_list, max_r_scaled, num_r_bins = 600):
+    @staticmethod
+    def bin_multiple_df_on_r_getmean(df_list, max_r_scaled, num_r_bins = 600):
         # Set up binning
         rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
 
@@ -221,6 +222,7 @@ class Image_Set():
         self.homeland_edge_radius = None
         self.homeland_edge_radius_scaled = None
 
+    def finish_setup(self):
         # Initialize rest of required stuff
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
