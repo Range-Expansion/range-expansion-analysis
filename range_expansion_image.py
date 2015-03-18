@@ -70,13 +70,12 @@ class Range_Expansion_Experiment():
                 print 'r binning is too tight; getting NaN'
                 print nan_list
             # Append list
-            mean_list.append(cur_im_mean)
+            mean_list.append(cur_im_mean),
         # Combine the list of each experiment
         return mean_list
 
     def get_local_hetero_averaged(self, im_sets_to_use, num_r_bins=800):
         '''Assumes that the images are already setup.'''
-        #TODO: Figure out the exponential decay returned by this is valid...it's probably not
 
         # Get the maximum radius to bin, first of all
         max_r_scaled = 99999 # in mm; this is obviously ridiculous, nothing will be larger
@@ -189,7 +188,8 @@ class Range_Expansion_Experiment():
         return result
 
 class Image_Set():
-    def __init__(self, image_name, path_dict, cache=True):
+    '''Homeland radius is used to get the center of the expansion now.'''
+    def __init__(self, image_name, path_dict, cache=True, bigger_than_image=True):
         '''If cache is passed, a ton of memory is used but things will go MUCH faster.'''
         self.image_name = image_name
         self.path_dict = path_dict
@@ -197,66 +197,71 @@ class Image_Set():
 
         self.bioformats_xml = Bioformats_XML(self.path_dict['tif_folder'] + self.image_name)
 
+        self.bigger_than_image = bigger_than_image
+
         # Add path to coalescence & annihilations
         image_name_without_extension = self.image_name.split('.')[0]
         self.annihilation_txt_path = self.path_dict['annihilation_folder'] + image_name_without_extension + '_annih.txt'
         self.coalescence_txt_path = self.path_dict['annihilation_folder']  + image_name_without_extension + '_coal.txt'
 
-        self._circle_mask = None
+        self._brightfield_mask = None
+        self._homeland_mask = None
         self._edges_mask = None
         self._doctored_edges_mask = None
-        self._channel_mask = None
+        self._fluorescent_mask = None
         self._image = None
 
         self._fractions = None
+
+        self._center_df = None
 
         # Other useful stuff for data analysis
         self._image_coordinate_df = None
         self._frac_df_list = None
 
         # Information about the maximum radius of the data we care about
-        self.max_radius = None
-        self.max_radius_scaled = None
-
-        self._homeland_mask = None
         self.homeland_edge_radius = None
         self.homeland_edge_radius_scaled = None
 
+        self.max_radius = None
+        self.max_radius_scaled = None
+
     def finish_setup(self):
         # Initialize rest of required stuff
+        self.homeland_edge_radius = self.get_homeland_radius()
+        self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
 
-        self.homeland_edge_radius = self.get_homeland_radius()
-        if self.homeland_edge_radius is not None:
-            self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+
 
 
     ###### Circular Mask ######
     @property
-    def circle_mask(self):
+    def brightfield_mask(self):
         '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
-        if self._circle_mask is None:
+        if self._brightfield_mask is None:
             try:
                 temp_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
                 print 'No circle mask found!'
                 return None
             if self.cache:
-                self._circle_mask = temp_mask
-                return self._circle_mask
+                self._brightfield_mask = temp_mask
+                return self._brightfield_mask
             else:
                 return temp_mask
         else:
-            return self._circle_mask
+            return self._brightfield_mask
 
-    @circle_mask.setter
-    def circle_mask(self, value):
-        self._circle_mask = value
+    @brightfield_mask.setter
+    def brightfield_mask(self, value):
+        self._brightfield_mask = value
 
-    @circle_mask.deleter
-    def circle_mask(self):
-        del self._circle_mask
+    @brightfield_mask.deleter
+    def brightfield_mask(self):
+        del self._brightfield_mask
 
     ###### Homeland Mask ######
     @property
@@ -283,6 +288,28 @@ class Image_Set():
     @homeland_mask.deleter
     def homeland_mask(self):
         del self._homeland_mask
+
+    ###### center_df ######
+    @property
+    def center_df(self):
+        '''Returns a dataframe with the center of the range expansion in image coordinates'''
+        if self._center_df is None:
+            temp_center = self.get_center()
+            if self.cache:
+                self._center_df = temp_center
+                return self._center_df
+            else:
+                return temp_center
+        else:
+            return self._center_df
+
+    @center_df.setter
+    def center_df(self, value):
+        self._center_df = value
+
+    @center_df.deleter
+    def center_df(self):
+        del self._center_df
 
     ###### Edges Mask ######
     @property
@@ -338,29 +365,29 @@ class Image_Set():
 
     ######### Channel Masks ########
     @property
-    def channel_mask(self):
+    def fluorescent_mask(self):
         '''Returns the mask of each channel.'''
-        if self._channel_mask is None:
+        if self._fluorescent_mask is None:
             try:
                 temp_mask = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
             except IOError:
                 print 'No channel masks found!'
                 return None
             if self.cache:
-                self._channel_mask = temp_mask
-                return self._channel_mask
+                self._fluorescent_mask = temp_mask
+                return self._fluorescent_mask
             else:
                 return temp_mask
         else:
-            return self._channel_mask
+            return self._fluorescent_mask
 
-    @channel_mask.setter
-    def channel_mask(self, value):
-        self.channel_mask = value
+    @fluorescent_mask.setter
+    def fluorescent_mask(self, value):
+        self.fluorescent_mask = value
 
-    @channel_mask.deleter
-    def channel_mask(self):
-        del self.channel_mask
+    @fluorescent_mask.deleter
+    def fluorescent_mask(self):
+        del self.fluorescent_mask
 
     ######## Image ######
     @property
@@ -450,7 +477,7 @@ class Image_Set():
     ####### Main Functions #######
 
     def get_color_fractions(self):
-        cur_channel_mask = self.channel_mask
+        cur_channel_mask = self.fluorescent_mask
         if cur_channel_mask is not None:
             sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
             for i in range(cur_channel_mask.shape[0]):
@@ -464,13 +491,17 @@ class Image_Set():
             print 'Cannot determine color fractions because there is no channel mask.'
             return None
 
+    @staticmethod
+    def sem(x):
+        return sp.stats.sem(x, ddof=2)
+
     def get_center(self):
-        '''Returns the mean center as the standard error of the mean'''
-        cur_circle_mask = self.circle_mask
+        '''Returns the mean center and the standard error of the mean'''
+        cur_homeland_mask = self.homeland_mask
 
         center_list = []
-        for i in range(cur_circle_mask.shape[0]):
-            cur_image = cur_circle_mask[i, :, :]
+        for i in range(cur_homeland_mask.shape[0]):
+            cur_image = cur_homeland_mask[i, :, :]
             label_image = ski.measure.label(cur_image, neighbors=8)
             props = ski.measure.regionprops(label_image)
             for p in props:
@@ -478,24 +509,39 @@ class Image_Set():
                 center_list.append(p['centroid'])
         center_list = np.asarray(center_list)
         center_df = pd.DataFrame(data = center_list, columns=('r', 'c'))
-        av_center = center_df.mean()
-        std_err = center_df.apply(lambda x: sp.stats.sem(x, ddof=2))
+        result_df = center_df.groupby(lambda x: 0).agg(np.mean, Image_Set.sem)
 
-        return av_center, std_err
+        return result_df
 
     def get_max_radius(self):
-        cur_circle_mask = self.circle_mask
+        max_radius = None
+        if self.bigger_than_image:
+            # Find the minimum distance to the edge of the innoculation; this will be a straight line
+            # from the center to an edge
+            cur_center = self.center_df
+            cur_homeland_mask = self.homeland_mask
+            max_r = cur_homeland_mask.shape[1]
+            max_c = cur_homeland_mask.shape[2]
 
-        diameter_list = []
-        for i in range(cur_circle_mask.shape[0]):
-            cur_image = cur_circle_mask[i, :, :]
-            # Find maximum diameter
-            r, c = np.where(cur_image)
-            diameter = np.float(r.max() - r.min())
-            diameter_list.append(diameter)
-        diameter_list = np.array(diameter_list)
-        # Now find the mean radius
-        max_radius = int(np.floor(diameter_list.mean()/2))
+            dist_to_top = max_r - cur_center['mean', 'r']
+            dist_to_right = max_c - cur_center['mean', 'c']
+            dist_to_bottom = max_r['mean', 'r']
+            dist_to_left = max_c['mean', 'c']
+
+            max_radius = min(dist_to_top, dist_to_right, dist_to_bottom, dist_to_left)
+        else:
+            cur_brightfield_mask = self.brightfield_mask
+
+            diameter_list = []
+            for i in range(cur_brightfield_mask.shape[0]):
+                cur_image = cur_brightfield_mask[i, :, :]
+                # Find maximum diameter
+                r, c = np.where(cur_image)
+                diameter = np.float(r.max() - r.min())
+                diameter_list.append(diameter)
+            diameter_list = np.array(diameter_list)
+            # Now find the mean radius
+            max_radius = int(np.floor(diameter_list.mean()/2))
         return max_radius
 
     def get_homeland_radius(self):
@@ -695,7 +741,7 @@ class Image_Set():
 
     def get_overlap_image(self, num_overlap):
         #sum_mask counts how many different colors are at each pixel
-        cur_channel_mask = self.channel_mask
+        cur_channel_mask = self.fluorescent_mask
         sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
         for i in range(cur_channel_mask.shape[0]):
             sum_mask += cur_channel_mask[i, :, :]
