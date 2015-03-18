@@ -571,8 +571,8 @@ class Image_Set():
         df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel})
 
         cur_center_df = self.center_df
-        df['delta_r'] = df['r'] - cur_center_df['mean', 'r']
-        df['delta_c'] = df['c'] - cur_center_df['mean', 'c']
+        df['delta_r'] = df['r'] - cur_center_df['r', 'mean'].values
+        df['delta_c'] = df['c'] - cur_center_df['c', 'mean'].values
         df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
         df['radius_scaled'] = df['radius'] * self.get_scaling()
         df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
