@@ -778,10 +778,12 @@ class Image_Set():
 
     #### Annihilations and Coalescences ####
     def get_annih_and_coal(self):
+        cur_image_coordinate_df = self.image_coordinate_df
+
         cur_annihilations = pd.read_csv(self.annihilation_txt_path, sep='\t')
         cur_coalescences = pd.read_csv(self.coalescence_txt_path, sep='\t')
-        annihilations_df = pd.merge(cur_annihilations, self.image_coordinate_df, on=['r', 'c'])
-        coalescence_df = pd.merge(cur_coalescences, self.image_coordinate_df, on=['r', 'c'])
+        annihilations_df = pd.merge(cur_annihilations, cur_image_coordinate_df, on=['r', 'c'])
+        coalescence_df = pd.merge(cur_coalescences, cur_image_coordinate_df, on=['r', 'c'])
 
         return annihilations_df, coalescence_df
 
