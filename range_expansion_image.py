@@ -523,10 +523,10 @@ class Image_Set():
             max_r = cur_homeland_mask.shape[1]
             max_c = cur_homeland_mask.shape[2]
 
-            dist_to_top = max_r - cur_center['mean', 'r']
-            dist_to_right = max_c - cur_center['mean', 'c']
-            dist_to_bottom = max_r['mean', 'r']
-            dist_to_left = max_c['mean', 'c']
+            dist_to_top = max_r - cur_center['r', 'mean']
+            dist_to_right = max_c - cur_center['c', 'mean']
+            dist_to_bottom = max_r['r', 'mean']
+            dist_to_left = max_c['c', 'mean']
 
             max_radius = min(dist_to_top, dist_to_right, dist_to_bottom, dist_to_left)
         else:
@@ -546,11 +546,17 @@ class Image_Set():
 
     def get_homeland_radius(self):
         cur_homeland_mask = self.homeland_mask
-        if cur_homeland_mask is not None:
-            r, c = np.where(cur_homeland_mask)
+        diameter_list = []
+        for i in range(cur_homeland_mask.shape[0]):
+            cur_image = cur_homeland_mask[i, :, :]
+            # Find maximum diameter
+            r, c = np.where(cur_image)
             diameter = np.float(r.max() - r.min())
-            return np.ceil(diameter/2)
-        return None
+            diameter_list.append(diameter)
+        diameter_list = np.array(diameter_list)
+        # Now find the mean radius
+        homeland_radius = int(np.floor(diameter_list.mean()/2))
+        return homeland_radius
 
     def get_image_coordinate_df(self):
         '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
@@ -564,9 +570,9 @@ class Image_Set():
 
         df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel})
 
-        av_center, std_err = self.get_center()
-        df['delta_r'] = df['r'] - av_center['r']
-        df['delta_c'] = df['c'] - av_center['c']
+        cur_center_df = self.center_df
+        df['delta_r'] = df['r'] - cur_center_df['mean', 'r']
+        df['delta_c'] = df['c'] - cur_center_df['mean', 'c']
         df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
         df['radius_scaled'] = df['radius'] * self.get_scaling()
         df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
