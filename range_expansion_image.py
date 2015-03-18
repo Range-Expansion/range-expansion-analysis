@@ -2,7 +2,7 @@ __author__ = 'bryan'
 #skimage imports
 import skimage as ski
 import skimage.io
-import skimage.filter
+import skimage.filters
 import skimage.measure
 import skimage.morphology
 import skimage.segmentation
@@ -509,7 +509,7 @@ class Image_Set():
                 center_list.append(p['centroid'])
         center_list = np.asarray(center_list)
         center_df = pd.DataFrame(data = center_list, columns=('r', 'c'))
-        result_df = center_df.groupby(lambda x: 0).agg(np.mean, Image_Set.sem)
+        result_df = center_df.groupby(lambda x: 0).agg([np.mean, Image_Set.sem])
 
         return result_df
 
@@ -525,10 +525,10 @@ class Image_Set():
 
             dist_to_top = max_r - cur_center['r', 'mean']
             dist_to_right = max_c - cur_center['c', 'mean']
-            dist_to_bottom = max_r['r', 'mean']
-            dist_to_left = max_c['c', 'mean']
+            dist_to_bottom = cur_center['r', 'mean']
+            dist_to_left = cur_center['c', 'mean']
 
-            max_radius = min(dist_to_top, dist_to_right, dist_to_bottom, dist_to_left)
+            max_radius = min(dist_to_top.values, dist_to_right.values, dist_to_bottom.values, dist_to_left.values)
         else:
             cur_brightfield_mask = self.brightfield_mask
 
