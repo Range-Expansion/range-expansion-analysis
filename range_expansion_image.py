@@ -19,7 +19,7 @@ import pymorph as pm
 import mahotas as mh
 
 class Range_Expansion_Experiment():
-    def __init__(self, base_folder, cache=True):
+    def __init__(self, base_folder, cache=True, **kwargs):
         '''Cache determines whether data is cached; it can vastly speed up everything.'''
         self.cache = cache
 
@@ -34,9 +34,9 @@ class Range_Expansion_Experiment():
 
         self.image_set_list = None
 
-        self.finish_setup()
+        self.finish_setup(**kwargs)
 
-    def finish_setup(self):
+    def finish_setup(self, **kwargs):
         # Get a list of all images
         tif_paths = glob.glob(self.path_dict['tif_folder'] + '*.ome.tif')
         tif_paths.sort()
@@ -47,8 +47,23 @@ class Range_Expansion_Experiment():
         self.image_set_list = []
 
         for cur_name in image_names:
-            im_set = Image_Set(cur_name, self.path_dict, cache=self.cache)
+            im_set = Image_Set(cur_name, self.path_dict, cache=self.cache, **kwargs)
             self.image_set_list.append(im_set)
+
+    # Convenience method
+    def get_complete_im_sets(self, folder_name):
+        complete_im_sets = []
+
+        folder = self.path_dict[folder_name]
+        desired_names = glob.glob(folder + '*.tif')
+        # Get the basename of the desired_names
+        desired_names = [os.path.basename(z) for z in desired_names]
+        count = 0
+        for cur_im_set in self.image_set_list:
+            if cur_im_set.image_name in desired_names:
+                complete_im_sets.append(count)
+            count += 1
+        return complete_im_sets
 
     ## Work with Averaging multiple sets of data
 
@@ -211,13 +226,10 @@ class Image_Set():
         self._fluorescent_mask = None
         self._image = None
 
-        self._fractions = None
-
         self._center_df = None
 
         # Other useful stuff for data analysis
         self._image_coordinate_df = None
-        self._frac_df_list = None
 
         # Information about the maximum radius of the data we care about
         self.homeland_edge_radius = None
@@ -228,6 +240,7 @@ class Image_Set():
 
     def finish_setup(self):
         # Initialize rest of required stuff
+
         self.homeland_edge_radius = self.get_homeland_radius()
         self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
 
@@ -363,7 +376,7 @@ class Image_Set():
     def doctored_edges_mask(self):
         del self._doctored_edges_mask
 
-    ######### Channel Masks ########
+    ######### Fluorescent Masks ########
     @property
     def fluorescent_mask(self):
         '''Returns the mask of each channel.'''
@@ -415,26 +428,7 @@ class Image_Set():
     def image(self):
         del self._image
 
-    ###### Fractions ######
-
-    @property
-    def fractions(self):
-        '''Returns the color fractions.'''
-        if self._fractions is None:
-            temp_fractions = self.get_color_fractions()
-            if self.cache:
-                self._fractions = temp_fractions
-            return temp_fractions
-        else:
-            return self._fractions
-
-    @fractions.setter
-    def fractions(self, value):
-        self._fractions = value
-
-    @fractions.deleter
-    def fractions(self):
-        del self._fractions
+    ###### Fractions: No longer needed, ignore overlap ######
 
     ####### Image Coordinate df ####
     @property
@@ -454,25 +448,6 @@ class Image_Set():
     @image_coordinate_df.deleter
     def image_coordinate_df(self):
         del self._image_coordinate_df
-
-    ###### Fractional df list #####
-    @property
-    def frac_df_list(self):
-        if self._frac_df_list is None:
-            temp_list = self.get_channel_frac_df()
-            if self.cache:
-                self._frac_df_list = temp_list
-            return temp_list
-        else:
-            return self._frac_df_list
-
-    @frac_df_list.setter
-    def frac_df_list(self, value):
-        self._frac_df_list = value
-
-    @frac_df_list.deleter
-    def frac_df_list(self):
-        del self._frac_df_list
 
     ####### Main Functions #######
 
@@ -579,6 +554,33 @@ class Image_Set():
 
         return df
 
+    def get_fracs_at_radius(self):
+        '''Gets fractions binned at all radii.'''
+        cur_masks = self.fluorescent_mask
+        cur_im_coordinate =  self.image_coordinate_df
+        count = 0
+        for mask in cur_masks:
+            string = 'ch' + str(count)
+            cur_im_coordinate[string] = mask.ravel()
+            count += 1
+        binned_by_radius, bins = self.bin_image_coordinate_r_df(cur_im_coordinate)
+
+        num_channels = cur_masks.shape[0]
+        start_string = 'ch0'
+        finish_string = 'ch' + str(num_channels -1)
+
+        channel_data = binned_by_radius.loc[:, start_string:finish_string]
+
+        channels_sum_columns = channel_data.xs('sum', level=1, axis=1)
+        total_sum = channels_sum_columns.sum(axis=1)
+
+        fractions = channels_sum_columns.apply(lambda x: x/total_sum)
+        fractions = fractions.add_suffix('_frac')
+        fractions['radius_midbin_scaled'] = binned_by_radius['radius_midbin_scaled']
+
+        return fractions
+
+
     def get_channel_frac_df(self):
 
         df_list = []
@@ -602,7 +604,7 @@ class Image_Set():
         max_r_ceil = np.floor(df['radius'].max())
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
         groups = df.groupby(pd.cut(df.radius, bins))
-        mean_groups = groups.agg(['mean'])
+        mean_groups = groups.agg(['mean', 'sum'])
         # Assign the binning midpoints...
         mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
         mean_groups['radius_midbin_scaled'] = mean_groups['radius_midbin'] * self.get_scaling()
