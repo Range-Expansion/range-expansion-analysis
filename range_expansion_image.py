@@ -67,7 +67,7 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
-    def get_fractions_concat(self, im_set_indices_to_use, min_radius_scaled = 2., max_radius_scaled = 10.):
+    def get_fractions_concat(self, im_set_indices_to_use, min_radius_scaled = 2., max_radius_scaled = 10., num_bins=200):
         """Returns a DF with all fraction lists. Also returns the cut that should be used to groupby."""
         frac_list = []
 
@@ -87,7 +87,7 @@ class Range_Expansion_Experiment():
         frac_concat = pd.concat(frac_list)
         frac_concat = frac_concat.reset_index()
 
-        radius_bins = np.linspace(2.5, 10, 200)
+        radius_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
         cut = pd.cut(frac_concat['radius_midbin_scaled'], radius_bins)
 
         return frac_concat, cut
