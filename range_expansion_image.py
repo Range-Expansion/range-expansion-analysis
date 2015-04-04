@@ -67,6 +67,31 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
+    def get_fractions_concat(self, im_set_indices_to_use, min_radius_scaled = 2., max_radius_scaled = 10.):
+        """Returns a DF with all fraction lists. Also returns the cut that should be used to groupby."""
+        frac_list = []
+
+        for index in im_set_indices_to_use:
+            cur_im_set = self.image_set_list[index]
+            fracs = cur_im_set.get_fracs_at_radius()
+            bigger_than_homeland = fracs['radius_midbin_scaled'] > min_radius_scaled
+            cutoff = fracs['radius_midbin_scaled'] < max_radius_scaled
+
+            fracs_binned = fracs.loc[np.logical_and(bigger_than_homeland, cutoff), :]
+
+            fracs_binned['im_set'] = index
+            fracs_binned['bio_replicate'] = cur_im_set.get_biorep_name()
+
+            frac_list.append(fracs_binned)
+
+        frac_concat = pd.concat(frac_list)
+        frac_concat = frac_concat.reset_index()
+
+        radius_bins = np.linspace(2.5, 10, 200)
+        cut = pd.cut(frac_concat['radius_midbin_scaled'], radius_bins)
+
+        return frac_concat, cut
+
     @staticmethod
     def bin_multiple_df_on_r_getmean(df_list, max_r_scaled, num_r_bins = 600):
         # Set up binning
@@ -451,6 +476,14 @@ class Image_Set():
 
     ####### Main Functions #######
 
+    def get_biorep_name(self):
+        """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
+        name = self.image_name
+        after_bio = name.split('bio')[1]
+        bio_name = after_bio.split('_')[0]
+
+        return bio_name.lower()
+
     def get_color_fractions(self):
         cur_channel_mask = self.fluorescent_mask
         if cur_channel_mask is not None:
@@ -471,7 +504,7 @@ class Image_Set():
         return sp.stats.sem(x, ddof=2)
 
     def get_center(self):
-        '''Returns the mean center and the standard error of the mean'''
+        """Returns the mean center and the standard error of the mean"""
         cur_homeland_mask = self.homeland_mask
 
         center_list = []
@@ -534,8 +567,8 @@ class Image_Set():
         return homeland_radius
 
     def get_image_coordinate_df(self):
-        '''Returns image coordinates in r and theta. Uses the center of the brightfield mask
-        as the origin.'''
+        """Returns image coordinates in r and theta. Uses the center of the brightfield mask
+        as the origin."""
         rows = np.arange(0, self.image.shape[1])
         columns = np.arange(0, self.image.shape[2])
         rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
