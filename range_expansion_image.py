@@ -92,6 +92,47 @@ class Range_Expansion_Experiment():
 
         return frac_concat, cut
 
+
+    @staticmethod
+    def bin_annih_or_coal(df, bins):
+        """Calculates cumulative sums for annihilations/coalescences along bins which can later be averaged."""
+        df['count'] = 1
+        cut = pd.cut(df['radius_scaled'], bins)
+        gb = df.groupby(cut)
+        mean_bins = gb.agg('sum')
+        mean_bins.loc[pd.isnull(mean_bins['count']), 'count'] = 0
+        mean_bins['cumsum'] = np.cumsum(mean_bins['count'])
+
+        # Add radius_midbin to each...
+        mean_bins['radius_scaled_midbin'] = (bins[:-1] + bins[1:])/2.
+
+        return mean_bins
+
+    def get_cumulative_average_annih_coal(self, im_set_indices_to_use, min_radius_scaled = 2.5, max_radius_scaled = 11,
+                                          num_bins = 500):
+        new_r_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
+        binned_annih_list = []
+        binned_coal_list = []
+        for index in im_set_indices_to_use:
+            cur_im_set = self.image_set_list[index]
+            annih, coal = cur_im_set.get_annih_and_coal()
+
+            binned_annih = Range_Expansion_Experiment.bin_annih_or_coal(annih, new_r_bins)
+            binned_coal  = Range_Expansion_Experiment.bin_annih_or_coal(coal, new_r_bins)
+
+            binned_annih['index'] = index
+            binned_coal['index'] = index
+            binned_annih['bio_replicate'] = cur_im_set.get_biorep_name()
+            binned_coal['bio_replicate'] = cur_im_set.get_biorep_name()
+
+            binned_annih_list.append(binned_annih)
+            binned_coal_list.append(binned_coal)
+
+        combined_annih = pd.concat(binned_annih_list, join='outer')
+        combined_coal = pd.concat(binned_coal_list)
+
+        return combined_annih, combined_coal
+
     @staticmethod
     def bin_multiple_df_on_r_getmean(df_list, max_r_scaled, num_r_bins = 600):
         # Set up binning
