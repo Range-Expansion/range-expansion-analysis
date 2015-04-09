@@ -155,72 +155,6 @@ class Range_Expansion_Experiment():
         # Combine the list of each experiment
         return mean_list
 
-    def get_local_hetero_averaged(self, im_sets_to_use, num_r_bins=800):
-        '''Assumes that the images are already setup.'''
-
-        # Get the maximum radius to bin, first of all
-        max_r_scaled = 99999 # in mm; this is obviously ridiculous, nothing will be larger
-        for im_set_index in im_sets_to_use:
-            cur_im = self.image_set_list[im_set_index]
-            cur_max_r = cur_im.max_radius * cur_im.get_scaling()
-            if cur_max_r < max_r_scaled:
-                max_r_scaled = cur_max_r
-
-        # Set up binning
-        rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
-
-        local_hetero_df_list = []
-        # Loop through im_sets, bin at each r
-        for im_set_index in im_sets_to_use:
-            cur_im = self.image_set_list[im_set_index]
-            local_hetero = cur_im.get_local_hetero_df()
-            local_hetero_df_list.append(local_hetero)
-
-        mean_list = self.bin_multiple_df_on_r_getmean(local_hetero_df_list, max_r_scaled, num_r_bins=num_r_bins)
-        # Combine the list of each experiment
-        combined_mean_df = pd.concat(mean_list)
-        # Group by the index
-        result = combined_mean_df.groupby(level=0, axis=0).agg(['mean', sp.stats.sem])
-        # Sort by radius scaled
-        result = result.sort([('radius_scaled', 'mean')])
-        # Create a column with the midpoint of each bin which is what we actually want
-        result['r_scaled_midbin'] = (rscaled_bins[1:] + rscaled_bins[0:-1])/2.
-
-        return result
-
-    def get_overlap_density_averaged(self, im_sets_to_use, num_overlap, num_r_bins=800):
-        '''Assumes that the images are already setup.'''
-
-        # Get the maximum radius to bin, first of all
-        max_r_scaled = 99999 # in mm; this is obviously ridiculous, nothing will be larger
-        for im_set_index in im_sets_to_use:
-            cur_im = self.image_set_list[im_set_index]
-            cur_max_r = cur_im.max_radius * cur_im.get_scaling()
-            if cur_max_r < max_r_scaled:
-                max_r_scaled = cur_max_r
-
-        # Set up binning
-        rscaled_bins = np.linspace(0, max_r_scaled, num=num_r_bins)
-
-        overlap_df_list = []
-        # Loop through im_sets, bin at each r
-        for im_set_index in im_sets_to_use:
-            cur_im = self.image_set_list[im_set_index]
-            edge_df = cur_im.get_overlap_df(num_overlap)
-            overlap_df_list.append(edge_df)
-
-        mean_list = self.bin_multiple_df_on_r_getmean(overlap_df_list, max_r_scaled, num_r_bins=num_r_bins)
-        # Combine the list of each experiment
-        combined_mean_df = pd.concat(mean_list)
-        # Group by the index
-        result = combined_mean_df.groupby(level=0, axis=0).agg(['mean', sp.stats.sem])
-        # Sort by radius scaled
-        result = result.sort([('radius_scaled', 'mean')])
-        # Create a column with the midpoint of each bin which is what we actually want
-        result['r_scaled_midbin'] = (rscaled_bins[1:] + rscaled_bins[0:-1])/2.
-
-        return result
-
     def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
@@ -312,9 +246,6 @@ class Image_Set():
 
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
-
-
-
 
     ###### Circular Mask ######
     @property
@@ -525,21 +456,6 @@ class Image_Set():
 
         return bio_name.lower()
 
-    def get_color_fractions(self):
-        cur_channel_mask = self.fluorescent_mask
-        if cur_channel_mask is not None:
-            sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
-            for i in range(cur_channel_mask.shape[0]):
-                sum_mask += cur_channel_mask[i, :, :]
-
-            # Now divide each channel by the sum
-            fractions = cur_channel_mask / sum_mask.astype(np.float)
-            fractions[np.isnan(fractions)] = 0
-            return fractions
-        else:
-            print 'Cannot determine color fractions because there is no channel mask.'
-            return None
-
     @staticmethod
     def sem(x):
         return sp.stats.sem(x, ddof=2)
@@ -628,8 +544,8 @@ class Image_Set():
 
         return df
 
-    def get_fracs_at_radius(self):
-        '''Gets fractions binned at all radii.'''
+    def get_masks_df(self):
+        """Gets the mask df"""
         cur_masks = self.fluorescent_mask
         cur_im_coordinate =  self.image_coordinate_df
         count = 0
@@ -637,9 +553,17 @@ class Image_Set():
             string = 'ch' + str(count)
             cur_im_coordinate[string] = mask.ravel()
             count += 1
-        binned_by_radius, bins = self.bin_image_coordinate_r_df(cur_im_coordinate)
 
-        num_channels = cur_masks.shape[0]
+        return cur_im_coordinate
+
+
+    def get_fracs_at_radius(self):
+        """Gets fractions binned at all radii."""
+        masks_df = self.get_masks_df()
+
+        binned_by_radius, bins = self.bin_image_coordinate_r_df(masks_df)
+
+        num_channels = self.fluorescent_mask.shape[0]
         start_string = 'ch0'
         finish_string = 'ch' + str(num_channels -1)
 
@@ -654,26 +578,6 @@ class Image_Set():
 
         return fractions
 
-
-    def get_channel_frac_df(self):
-
-        df_list = []
-
-        cur_fractions = self.fractions
-
-        if cur_fractions is not None:
-            for frac in cur_fractions:
-                df = self.image_coordinate_df.copy()
-                df['f'] = frac.ravel()
-                # Only keep data less than the maximum radius!
-                df = df[df['radius'] < self.max_radius]
-
-                df_list.append(df)
-            return df_list
-        else:
-            print 'I cannot determine the fraction dataframe; fractions image is None'
-            return None
-
     def bin_image_coordinate_r_df(self, df):
         max_r_ceil = np.floor(df['radius'].max())
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
@@ -685,90 +589,53 @@ class Image_Set():
 
         return mean_groups, bins
 
-    def bin_theta_at_r_df(self, r, delta_x=1.5):
-
+    def bin_theta_at_r_df(self, df, r, delta_x=1.5):
+        """Assumes that the df has image_coordinate structure."""
         theta_df_list = []
 
         delta_theta = delta_x / float(r)
         theta_bins = np.arange(-np.pi - .5*delta_theta, np.pi + .5*delta_theta, delta_theta)
 
-        cur_frac_df_list = self.frac_df_list
+        # First get the theta at the desired r; r should be an int
+        theta_df = df[(df['radius'] >= r - delta_x/2.) & (df['radius'] < r + delta_x/2.)]
+        if not df[df.isnull().any(axis=1)].empty:
+            print 'bin_theta_at_r_df has NaN due to r binning: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
+            print theta_df[theta_df.isnull().any(axis=1)]
 
-        for frac in cur_frac_df_list:
-            # First get the theta at the desired r; r should be an int
-            theta_df = frac[(frac['radius'] >= r - delta_x/2.) & (frac['radius'] < r + delta_x/2.)]
-            if not theta_df[theta_df.isnull().any(axis=1)].empty:
-                print 'bin_theta_at_r_df has NaN due to r binning: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
-                print theta_df[theta_df.isnull().any(axis=1)]
+        theta_cut = pd.cut(theta_df['theta'], theta_bins)
+        groups = theta_df.groupby(theta_cut)
+        mean_df = groups.agg('mean')
+        # Check for nan's
+        if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
+            print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
+                  ' name= ' + self.image_name
+            print mean_df[mean_df.isnull().any(axis=1)]
 
-            theta_cut = pd.cut(theta_df['theta'], theta_bins)
-            groups = theta_df.groupby(theta_cut)
-            mean_df = groups.agg(['mean'])
-            # Check for nan's
-            if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
-                print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
-                      ' name= ' + self.image_name
-                print mean_df[mean_df.isnull().any(axis=1)]
-
-            theta_df_list.append(mean_df)
-
-
-        return theta_df_list, theta_bins
-
-    def delta_theta_convolve_df(self, r, delta_theta):
-        '''Calculates the heterozygosity delta_theta away'''
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
-        # Now determine how many indices away you need to grab to properly do the roll
-        theta_spacing = theta_bins[1] - theta_bins[0]
-        theta_index = np.ceil(delta_theta / theta_spacing)
-        if np.mod(theta_index, 1) == 0 and delta_theta != 0:
-            theta_index -= 1
-
-        theta_index = int(theta_index) # The number we have to roll
-
-        conv_list = []
-        for cur_theta_df in theta_df_list:
-            f_values = cur_theta_df['f'].values.flatten()
-            convolution = np.roll(f_values, theta_index)
-            conv_list.append(convolution)
-
-        # Return the updated lists
-        new_df_list = []
-        count = 0
-        for cur_theta_df in theta_df_list:
-            new_df = cur_theta_df.drop('f', 1)
-            new_df['f', 'mean'] = conv_list[count]
-            new_df_list.append(new_df)
-
-            count += 1
-        return new_df_list
+        return mean_df, theta_bins
 
     def get_local_hetero_df(self):
-        local_hetero = np.zeros(self.frac_df_list[0].shape[0])
+        """Our current model of fractions always has a local heterozygosity of zero."""
+        return 0
 
-        cur_frac_df_list = self.frac_df_list
+    def get_nonlocal_hetero(self, r):
+        """Calculates the heterozygosity at every theta."""
+        masks_df = self.get_masks_df()
 
-        for j in range(len(self.frac_df_list)):
-            result = cur_frac_df_list[j]['f']*(1-cur_frac_df_list[j]['f'])
-            local_hetero += result
-        hetero_df = self.image_coordinate_df.copy()
-        hetero_df['h'] = local_hetero
-        return hetero_df
-
-    def get_nonlocal_hetero_df_array(self, r):
-        '''Calculates the heterozygosity at every theta.'''
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(masks_df, r)
         theta_step = theta_bins[1] - theta_bins[0]
 
         # Grab the desired data
-        theta_f_list = []
-        for cur_theta_df in theta_df_list:
-            theta_f_list.append(cur_theta_df['f'].values)
-        theta_f_list = np.array(theta_f_list) # [0, ...] is the first list, etc.
-        convolve_list = theta_f_list.copy()
+        num_channels = self.fluorescent_mask.shape[0]
+        start_string = 'ch0'
+        finish_string = 'ch' + str(num_channels -1)
+
+        values = theta_df_list.loc[:, start_string:finish_string].values
+        convolve_list = values.copy()
 
         # Number of points to calcualte
-        num_points = theta_df_list[0].shape[0]
+        num_points = theta_df_list.values.shape[0]
+
+        # We act on each column separately sadly
 
         delta_theta_list = -1.*np.ones(num_points, dtype=np.double)
         mean_h_list = -1.*np.ones(num_points, dtype=np.double)
@@ -779,10 +646,12 @@ class Image_Set():
                 delta_theta_list[i] = delta_theta_list[i - 1] + theta_step
 
             # Calculate the heterozygosity
-            multiplied = theta_f_list * (1 - convolve_list)
+            multiplied = values * (1 - convolve_list)
             # From multiplied, calculat the heterozygosity
-            h = multiplied.sum(axis=0)
-            mean_h_list[i] = h.mean()
+            av_channel_hetero = multiplied.mean(axis=0)
+            print av_channel_hetero
+            h = av_channel_hetero.sum()
+            mean_h_list[i] = h
 
             # Roll the convolve list by 1
             convolve_list = np.roll(convolve_list, 1, axis=1)
