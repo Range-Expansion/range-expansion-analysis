@@ -2,11 +2,9 @@ __author__ = 'bryan'
 #skimage imports
 import skimage as ski
 import skimage.io
-import skimage.filters
 import skimage.measure
 import skimage.morphology
-import skimage.segmentation
-#oither stuff
+#other stuff
 import matplotlib.pyplot as plt
 import tifffile as ti
 import xml.etree.ElementTree as ET
@@ -15,12 +13,11 @@ import os
 import pandas as pd
 import numpy as np
 import scipy as sp
-import pymorph as pm
 import mahotas as mh
 
 class Range_Expansion_Experiment():
     def __init__(self, base_folder, cache=True, **kwargs):
-        '''Cache determines whether data is cached; it can vastly speed up everything.'''
+        """Cache determines whether data is cached; it can vastly speed up everything."""
         self.cache = cache
 
         self.path_dict = {}
@@ -665,28 +662,6 @@ class Image_Set():
 
         return mean_h_list, delta_theta_list
 
-
-    def get_local_hetero_mask(self):
-        local_hetero_mask = np.zeros((self.fractions.shape[1], self.fractions.shape[2]))
-
-        for i in range(self.fractions.shape[0]):
-            for j in range(self.fractions.shape[0]):
-                if i != j:
-                    draw_different = self.fractions[i] * self.fractions[j]
-                    local_hetero_mask += draw_different
-
-        return local_hetero_mask
-
-    def get_frac_in_one_df(self):
-        '''A utility function that combines all fractions in one list.'''
-        cur_frac_df_list = self.frac_df_list
-        new_df = cur_frac_df_list[0].copy()
-        new_df = new_df.rename(columns={'f':'f0'})
-        for i in range(1, len(cur_frac_df_list)):
-            f_str = 'f' + str(i)
-            new_df[f_str] = self.frac_df_list[i]['f']
-        return new_df
-
     #### Overlap Images ####
 
     def get_overlap_image(self, num_overlap):
@@ -751,18 +726,6 @@ class Image_Set():
         '''Assumes x & y pixel scaling are the same'''
         scaling_str = self.bioformats_xml.pixel_nodes[0].attrib['PhysicalSizeX']
         return float(scaling_str)
-
-    # Plotting functions
-    def plot_local_hetero(self):
-        '''Make a simple plot of the local heterozygosity. Useful for diagnostic purposes.'''
-        hetero_df = self.get_local_hetero_df()
-        binned_hetero, bins = self.bin_image_coordinate_r_df(hetero_df)
-        # Add a scaled radius row
-        binned_hetero['radius_midbin_scaled'] = binned_hetero['radius_midbin'] * self.get_scaling()
-        plt.semilogy(binned_hetero['radius_midbin_scaled'], binned_hetero['h', 'mean'])
-        plt.xlabel('Radius (mm)')
-        plt.ylabel(r'$H(r)$')
-
 
 class Bioformats_XML():
     def __init__(self, path):
