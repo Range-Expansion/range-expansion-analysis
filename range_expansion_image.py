@@ -553,7 +553,6 @@ class Image_Set():
 
         return cur_im_coordinate
 
-
     def get_fracs_at_radius(self):
         """Gets fractions binned at all radii."""
         masks_df = self.get_masks_df()
