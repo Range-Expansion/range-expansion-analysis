@@ -152,7 +152,7 @@ class Range_Expansion_Experiment():
         # Combine the list of each experiment
         return mean_list
 
-    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
 
@@ -161,7 +161,7 @@ class Range_Expansion_Experiment():
             cur_scaling = cur_im_set.get_scaling()
 
             desired_r = np.around(r_scaled / cur_scaling)
-            result, theta_list = cur_im_set.get_nonlocal_hetero_df_array(desired_r)
+            result, theta_list = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x)
             cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
 
             # Check for nan's caused by heterozygosity
@@ -591,7 +591,8 @@ class Image_Set():
         theta_df_list = []
 
         delta_theta = delta_x / float(r)
-        theta_bins = np.arange(-np.pi - .5*delta_theta, np.pi + .5*delta_theta, delta_theta)
+        theta_bins = np.arange(-np.pi, np.pi + delta_theta, delta_theta)
+        theta_bins = theta_bins[:-1]
 
         # First get the theta at the desired r; r should be an int
         theta_df = df[(df['radius'] >= r - delta_x/2.) & (df['radius'] < r + delta_x/2.)]
@@ -614,11 +615,11 @@ class Image_Set():
         """Our current model of fractions always has a local heterozygosity of zero."""
         return 0
 
-    def get_nonlocal_hetero(self, r):
+    def get_nonlocal_hetero(self, r, delta_x = 1.5):
         """Calculates the heterozygosity at every theta."""
         masks_df = self.get_masks_df()
 
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(masks_df, r)
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(masks_df, r, delta_x = delta_x)
         theta_step = theta_bins[1] - theta_bins[0]
 
         # Grab the desired data
