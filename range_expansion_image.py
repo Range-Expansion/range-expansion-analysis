@@ -649,12 +649,11 @@ class Image_Set():
             multiplied = values * (1 - convolve_list)
             # From multiplied, calculat the heterozygosity
             av_channel_hetero = multiplied.mean(axis=0)
-            print av_channel_hetero
             h = av_channel_hetero.sum()
             mean_h_list[i] = h
 
             # Roll the convolve list by 1
-            convolve_list = np.roll(convolve_list, 1, axis=1)
+            convolve_list = np.roll(convolve_list, 1, axis=0)
 
         # Return theta between -pi and pi
         delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
