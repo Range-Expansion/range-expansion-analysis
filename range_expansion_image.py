@@ -587,7 +587,7 @@ class Image_Set():
 
         return cur_im_coordinate
 
-    ##### Other stuff
+    ##### Other stuff #####
 
     @staticmethod
     def sem(x):
@@ -714,22 +714,25 @@ class Image_Set():
         return mean_df, theta_bins
 
     def get_local_hetero_df(self):
-        local_hetero = np.zeros(self.frac_df[0].shape[0])
 
-        cur_frac_df_list = self.frac_df
+        cur_frac_df = self.frac_df
 
-        for j in range(len(self.frac_df)):
-            result = cur_frac_df_list[j]['f']*(1-cur_frac_df_list[j]['f'])
-            local_hetero += result
-        hetero_df = self.image_coordinate_df.copy()
-        hetero_df['h'] = local_hetero
-        return hetero_df
+        num_channels = self.fluorescent_mask.shape[0]
+        start_string = 'ch0'
+        finish_string = 'ch' + str(num_channels -1)
+
+        channel_data = cur_frac_df.loc[:, start_string:finish_string].values
+
+        local_h = np.sum(channel_data * (1 - channel_data), axis=1)
+        cur_frac_df['h'] = local_h
+
+        return cur_frac_df
 
     def get_nonlocal_hetero(self, r, delta_x = 1.5):
         """Calculates the heterozygosity at every theta."""
-        masks_df = self.get_masks_df()
+        cur_frac_df = self.frac_df
 
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(masks_df, r, delta_x = delta_x)
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(cur_frac_df, r, delta_x = delta_x)
         theta_step = theta_bins[1] - theta_bins[0]
 
         # Grab the desired data
