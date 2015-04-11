@@ -292,10 +292,11 @@ class Image_Set():
         self._fluorescent_mask = None
         self._image = None
 
-        self._center_df = None
-
         # Other useful stuff for data analysis
         self._image_coordinate_df = None
+        self._fractions = None
+        self._frac_df_list = None
+        self._center_df = None
 
         # Information about the maximum radius of the data we care about
         self.homeland_edge_radius = None
@@ -494,7 +495,27 @@ class Image_Set():
     def image(self):
         del self._image
 
-    ###### Fractions: No longer needed, ignore overlap ######
+    ###### Fractions: necessary to deal with overlap sadly ######
+    @property
+    def fractions(self):
+        '''Returns the color fractions.'''
+        if self._fractions is None:
+            temp_fractions = self.get_color_fractions()
+            if self.cache:
+                self._fractions = temp_fractions
+            return temp_fractions
+        else:
+            return self._fractions
+
+    @fractions.setter
+    def fractions(self, value):
+        self._fractions = value
+
+    @fractions.deleter
+    def fractions(self):
+        del self._fractions
+
+
 
     ####### Image Coordinate df ####
     @property
@@ -514,6 +535,27 @@ class Image_Set():
     @image_coordinate_df.deleter
     def image_coordinate_df(self):
         del self._image_coordinate_df
+
+
+    ###### Fractional df list #####
+    @property
+    def frac_df_list(self):
+        if self._frac_df_list is None:
+            temp_list = self.get_channel_frac_df()
+            if self.cache:
+                self._frac_df_list = temp_list
+            return temp_list
+        else:
+            return self._frac_df_list
+
+    @frac_df_list.setter
+    def frac_df_list(self, value):
+        self._frac_df_list = value
+
+    @frac_df_list.deleter
+    def frac_df_list(self):
+        del self._frac_df_list
+
 
     ####### Main Functions #######
 
