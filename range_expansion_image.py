@@ -494,7 +494,7 @@ class Image_Set():
     def fractions(self):
         '''Returns the color fractions.'''
         if self._fractions is None:
-            temp_fractions = self.get_color_fractions()
+            temp_fractions = self.get_fractions_mask()
             if self.cache:
                 self._fractions = temp_fractions
             return temp_fractions
@@ -508,8 +508,6 @@ class Image_Set():
     @fractions.deleter
     def fractions(self):
         del self._fractions
-
-
 
     ####### Image Coordinate df ####
     @property
@@ -529,7 +527,6 @@ class Image_Set():
     @image_coordinate_df.deleter
     def image_coordinate_df(self):
         del self._image_coordinate_df
-
 
     ###### Fractional df list #####
     @property
@@ -561,7 +558,9 @@ class Image_Set():
 
         return bio_name.lower()
 
-    def get_color_fractions(self):
+    #### Dealing with fractions: core of this analysis ####
+
+    def get_fractions_mask(self):
         cur_channel_mask = self.fluorescent_mask
         if cur_channel_mask is not None:
             sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
@@ -575,6 +574,18 @@ class Image_Set():
         else:
             print 'Cannot determine color fractions because there is no channel mask.'
             return None
+
+    def get_channel_frac_df(self):
+
+        cur_fractions = self.fractions
+        cur_im_coordinate =  self.image_coordinate_df
+        count = 0
+        for frac in cur_fractions:
+            string = 'ch' + str(count)
+            cur_im_coordinate[string] = frac.ravel()
+            count += 1
+
+        return cur_im_coordinate
 
     @staticmethod
     def sem(x):
@@ -663,25 +674,6 @@ class Image_Set():
         df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
 
         return df
-
-    def get_channel_frac_df(self):
-
-        df_list = []
-
-        cur_fractions = self.fractions
-
-        if cur_fractions is not None:
-            for frac in cur_fractions:
-                df = self.image_coordinate_df.copy()
-                df['f'] = frac.ravel()
-                # Only keep data less than the maximum radius!
-                df = df[df['radius'] < self.max_radius]
-
-                df_list.append(df)
-            return df_list
-        else:
-            print 'I cannot determine the fraction dataframe; fractions image is None'
-            return None
 
     def bin_image_coordinate_r_df(self, df):
         max_r_ceil = np.floor(df['radius'].max())
