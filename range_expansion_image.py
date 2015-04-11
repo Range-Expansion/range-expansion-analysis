@@ -509,6 +509,26 @@ class Image_Set():
     def fractions(self):
         del self._fractions
 
+    @property
+    def frac_df(self):
+        if self._frac_df_list is None:
+            temp_list = self.get_frac_df()
+            if self.cache:
+                self._frac_df_list = temp_list
+            return temp_list
+        else:
+            return self._frac_df_list
+
+    @frac_df.setter
+    def frac_df(self, value):
+        self._frac_df_list = value
+
+    @frac_df.deleter
+    def frac_df(self):
+        del self._frac_df_list
+
+
+
     ####### Image Coordinate df ####
     @property
     def image_coordinate_df(self):
@@ -527,26 +547,6 @@ class Image_Set():
     @image_coordinate_df.deleter
     def image_coordinate_df(self):
         del self._image_coordinate_df
-
-    ###### Fractional df list #####
-    @property
-    def frac_df_list(self):
-        if self._frac_df_list is None:
-            temp_list = self.get_channel_frac_df()
-            if self.cache:
-                self._frac_df_list = temp_list
-            return temp_list
-        else:
-            return self._frac_df_list
-
-    @frac_df_list.setter
-    def frac_df_list(self, value):
-        self._frac_df_list = value
-
-    @frac_df_list.deleter
-    def frac_df_list(self):
-        del self._frac_df_list
-
 
     ####### Main Functions #######
 
@@ -575,7 +575,7 @@ class Image_Set():
             print 'Cannot determine color fractions because there is no channel mask.'
             return None
 
-    def get_channel_frac_df(self):
+    def get_frac_df(self):
 
         cur_fractions = self.fractions
         cur_im_coordinate =  self.image_coordinate_df
@@ -586,6 +586,8 @@ class Image_Set():
             count += 1
 
         return cur_im_coordinate
+
+    ##### Other stuff
 
     @staticmethod
     def sem(x):
@@ -712,11 +714,11 @@ class Image_Set():
         return mean_df, theta_bins
 
     def get_local_hetero_df(self):
-        local_hetero = np.zeros(self.frac_df_list[0].shape[0])
+        local_hetero = np.zeros(self.frac_df[0].shape[0])
 
-        cur_frac_df_list = self.frac_df_list
+        cur_frac_df_list = self.frac_df
 
-        for j in range(len(self.frac_df_list)):
+        for j in range(len(self.frac_df)):
             result = cur_frac_df_list[j]['f']*(1-cur_frac_df_list[j]['f'])
             local_hetero += result
         hetero_df = self.image_coordinate_df.copy()
@@ -785,12 +787,12 @@ class Image_Set():
 
     def get_frac_in_one_df(self):
         '''A utility function that combines all fractions in one list.'''
-        cur_frac_df_list = self.frac_df_list
+        cur_frac_df_list = self.frac_df
         new_df = cur_frac_df_list[0].copy()
         new_df = new_df.rename(columns={'f':'f0'})
         for i in range(1, len(cur_frac_df_list)):
             f_str = 'f' + str(i)
-            new_df[f_str] = self.frac_df_list[i]['f']
+            new_df[f_str] = self.frac_df[i]['f']
         return new_df
 
     #### Overlap Images ####
