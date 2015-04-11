@@ -64,30 +64,20 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
-    def get_fractions_concat(self, im_set_indices_to_use, min_radius_scaled = 2., max_radius_scaled = 10., num_bins=250):
+    def get_fractions_concat(self, im_set_indices_to_use):
         """Returns a DF with all fraction lists. Also returns the cut that should be used to groupby."""
         frac_list = []
 
         for index in im_set_indices_to_use:
             cur_im_set = self.image_set_list[index]
             fracs = cur_im_set.get_fracs_at_radius()
-            bigger_than_homeland = fracs['radius_midbin_scaled'] > min_radius_scaled
-            cutoff = fracs['radius_midbin_scaled'] < max_radius_scaled
+            fracs['im_set'] = index
+            fracs['bio_replicate'] = cur_im_set.get_biorep_name()
 
-            fracs_binned = fracs.loc[np.logical_and(bigger_than_homeland, cutoff), :]
-
-            fracs_binned['im_set'] = index
-            fracs_binned['bio_replicate'] = cur_im_set.get_biorep_name()
-
-            frac_list.append(fracs_binned)
+            frac_list.append(fracs)
 
         frac_concat = pd.concat(frac_list)
-        # frac_concat = frac_concat.reset_index()
-
-        radius_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
-        cut = pd.cut(frac_concat['radius_midbin_scaled'], radius_bins)
-
-        return frac_concat, cut
+        return frac_concat
 
 
     @staticmethod
