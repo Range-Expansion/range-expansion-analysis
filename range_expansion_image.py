@@ -64,7 +64,7 @@ class Range_Expansion_Experiment():
 
     ## Work with Averaging multiple sets of data
 
-    def get_fractions_concat(self, im_set_indices_to_use, min_radius_scaled = 2., max_radius_scaled = 10., num_bins=200):
+    def get_fractions_concat(self, im_set_indices_to_use, min_radius_scaled = 2., max_radius_scaled = 10., num_bins=250):
         """Returns a DF with all fraction lists. Also returns the cut that should be used to groupby."""
         frac_list = []
 
@@ -82,7 +82,7 @@ class Range_Expansion_Experiment():
             frac_list.append(fracs_binned)
 
         frac_concat = pd.concat(frac_list)
-        frac_concat = frac_concat.reset_index()
+        # frac_concat = frac_concat.reset_index()
 
         radius_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
         cut = pd.cut(frac_concat['radius_midbin_scaled'], radius_bins)
@@ -587,6 +587,15 @@ class Image_Set():
 
         return cur_im_coordinate
 
+
+    def get_fracs_at_radius(self):
+        """Gets fractions binned at all radii."""
+        cur_frac_df = self.frac_df
+
+        binned_by_radius, bins = self.bin_image_coordinate_r_df(cur_frac_df)
+
+        return binned_by_radius
+
     ##### Other stuff #####
 
     @staticmethod
@@ -681,7 +690,7 @@ class Image_Set():
         max_r_ceil = np.floor(df['radius'].max())
         bins = np.arange(0, max_r_ceil+ 2 , 1.5)
         groups = df.groupby(pd.cut(df.radius, bins))
-        mean_groups = groups.agg(['mean', 'sum'])
+        mean_groups = groups.agg('mean')
         # Assign the binning midpoints...
         mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
         mean_groups['radius_midbin_scaled'] = mean_groups['radius_midbin'] * self.get_scaling()
@@ -787,16 +796,6 @@ class Image_Set():
                     local_hetero_mask += draw_different
 
         return local_hetero_mask
-
-    def get_frac_in_one_df(self):
-        '''A utility function that combines all fractions in one list.'''
-        cur_frac_df_list = self.frac_df
-        new_df = cur_frac_df_list[0].copy()
-        new_df = new_df.rename(columns={'f':'f0'})
-        for i in range(1, len(cur_frac_df_list)):
-            f_str = 'f' + str(i)
-            new_df[f_str] = self.frac_df[i]['f']
-        return new_df
 
     #### Overlap Images ####
 
