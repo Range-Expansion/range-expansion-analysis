@@ -870,7 +870,7 @@ class Image_Set():
         binned_hetero, bins = self.bin_image_coordinate_r_df(hetero_df)
         # Add a scaled radius row
         binned_hetero['radius_midbin_scaled'] = binned_hetero['radius_midbin'] * self.get_scaling()
-        plt.semilogy(binned_hetero['radius_midbin_scaled'], binned_hetero['h', 'mean'])
+        plt.loglog(binned_hetero['radius_midbin_scaled'], binned_hetero['h', 'mean'])
         plt.xlabel('Radius (mm)')
         plt.ylabel(r'$H(r)$')
 
