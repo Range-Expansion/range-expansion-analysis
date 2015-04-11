@@ -2,11 +2,9 @@ __author__ = 'bryan'
 #skimage imports
 import skimage as ski
 import skimage.io
-import skimage.filters
 import skimage.measure
 import skimage.morphology
-import skimage.segmentation
-#oither stuff
+#other stuff
 import matplotlib.pyplot as plt
 import tifffile as ti
 import xml.etree.ElementTree as ET
@@ -15,12 +13,11 @@ import os
 import pandas as pd
 import numpy as np
 import scipy as sp
-import pymorph as pm
 import mahotas as mh
 
 class Range_Expansion_Experiment():
     def __init__(self, base_folder, cache=True, **kwargs):
-        '''Cache determines whether data is cached; it can vastly speed up everything.'''
+        """Cache determines whether data is cached; it can vastly speed up everything."""
         self.cache = cache
 
         self.path_dict = {}
@@ -221,7 +218,7 @@ class Range_Expansion_Experiment():
 
         return result
 
-    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250):
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
 
@@ -230,7 +227,7 @@ class Range_Expansion_Experiment():
             cur_scaling = cur_im_set.get_scaling()
 
             desired_r = np.around(r_scaled / cur_scaling)
-            result, theta_list = cur_im_set.get_nonlocal_hetero_df_array(desired_r)
+            result, theta_list = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x)
             cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
 
             # Check for nan's caused by heterozygosity
@@ -313,9 +310,6 @@ class Image_Set():
 
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
-
-
-
 
     ###### Circular Mask ######
     @property
@@ -670,33 +664,6 @@ class Image_Set():
 
         return df
 
-    def get_fracs_at_radius(self):
-        '''Gets fractions binned at all radii.'''
-        cur_masks = self.fluorescent_mask
-        cur_im_coordinate =  self.image_coordinate_df
-        count = 0
-        for mask in cur_masks:
-            string = 'ch' + str(count)
-            cur_im_coordinate[string] = mask.ravel()
-            count += 1
-        binned_by_radius, bins = self.bin_image_coordinate_r_df(cur_im_coordinate)
-
-        num_channels = cur_masks.shape[0]
-        start_string = 'ch0'
-        finish_string = 'ch' + str(num_channels -1)
-
-        channel_data = binned_by_radius.loc[:, start_string:finish_string]
-
-        channels_sum_columns = channel_data.xs('sum', level=1, axis=1)
-        total_sum = channels_sum_columns.sum(axis=1)
-
-        fractions = channels_sum_columns.apply(lambda x: x/total_sum)
-        fractions = fractions.add_suffix('_frac')
-        fractions['radius_midbin_scaled'] = binned_by_radius['radius_midbin_scaled']
-
-        return fractions
-
-
     def get_channel_frac_df(self):
 
         df_list = []
@@ -727,63 +694,30 @@ class Image_Set():
 
         return mean_groups, bins
 
-    def bin_theta_at_r_df(self, r, delta_x=1.5):
-
+    def bin_theta_at_r_df(self, df, r, delta_x=1.5):
+        """Assumes that the df has image_coordinate structure."""
         theta_df_list = []
 
         delta_theta = delta_x / float(r)
-        theta_bins = np.arange(-np.pi - .5*delta_theta, np.pi + .5*delta_theta, delta_theta)
+        theta_bins = np.arange(-np.pi, np.pi + delta_theta, delta_theta)
+        theta_bins = theta_bins[:-1]
 
-        cur_frac_df_list = self.frac_df_list
+        # First get the theta at the desired r; r should be an int
+        theta_df = df[(df['radius'] >= r - delta_x/2.) & (df['radius'] < r + delta_x/2.)]
+        if not df[df.isnull().any(axis=1)].empty:
+            print 'bin_theta_at_r_df has NaN due to r binning: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
+            print theta_df[theta_df.isnull().any(axis=1)]
 
-        for frac in cur_frac_df_list:
-            # First get the theta at the desired r; r should be an int
-            theta_df = frac[(frac['radius'] >= r - delta_x/2.) & (frac['radius'] < r + delta_x/2.)]
-            if not theta_df[theta_df.isnull().any(axis=1)].empty:
-                print 'bin_theta_at_r_df has NaN due to r binning: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
-                print theta_df[theta_df.isnull().any(axis=1)]
+        theta_cut = pd.cut(theta_df['theta'], theta_bins)
+        groups = theta_df.groupby(theta_cut)
+        mean_df = groups.agg('mean')
+        # Check for nan's
+        if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
+            print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
+                  ' name= ' + self.image_name
+            print mean_df[mean_df.isnull().any(axis=1)]
 
-            theta_cut = pd.cut(theta_df['theta'], theta_bins)
-            groups = theta_df.groupby(theta_cut)
-            mean_df = groups.agg(['mean'])
-            # Check for nan's
-            if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
-                print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
-                      ' name= ' + self.image_name
-                print mean_df[mean_df.isnull().any(axis=1)]
-
-            theta_df_list.append(mean_df)
-
-
-        return theta_df_list, theta_bins
-
-    def delta_theta_convolve_df(self, r, delta_theta):
-        '''Calculates the heterozygosity delta_theta away'''
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
-        # Now determine how many indices away you need to grab to properly do the roll
-        theta_spacing = theta_bins[1] - theta_bins[0]
-        theta_index = np.ceil(delta_theta / theta_spacing)
-        if np.mod(theta_index, 1) == 0 and delta_theta != 0:
-            theta_index -= 1
-
-        theta_index = int(theta_index) # The number we have to roll
-
-        conv_list = []
-        for cur_theta_df in theta_df_list:
-            f_values = cur_theta_df['f'].values.flatten()
-            convolution = np.roll(f_values, theta_index)
-            conv_list.append(convolution)
-
-        # Return the updated lists
-        new_df_list = []
-        count = 0
-        for cur_theta_df in theta_df_list:
-            new_df = cur_theta_df.drop('f', 1)
-            new_df['f', 'mean'] = conv_list[count]
-            new_df_list.append(new_df)
-
-            count += 1
-        return new_df_list
+        return mean_df, theta_bins
 
     def get_local_hetero_df(self):
         local_hetero = np.zeros(self.frac_df_list[0].shape[0])
@@ -797,20 +731,25 @@ class Image_Set():
         hetero_df['h'] = local_hetero
         return hetero_df
 
-    def get_nonlocal_hetero_df_array(self, r):
-        '''Calculates the heterozygosity at every theta.'''
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(r)
+    def get_nonlocal_hetero(self, r, delta_x = 1.5):
+        """Calculates the heterozygosity at every theta."""
+        masks_df = self.get_masks_df()
+
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(masks_df, r, delta_x = delta_x)
         theta_step = theta_bins[1] - theta_bins[0]
 
         # Grab the desired data
-        theta_f_list = []
-        for cur_theta_df in theta_df_list:
-            theta_f_list.append(cur_theta_df['f'].values)
-        theta_f_list = np.array(theta_f_list) # [0, ...] is the first list, etc.
-        convolve_list = theta_f_list.copy()
+        num_channels = self.fluorescent_mask.shape[0]
+        start_string = 'ch0'
+        finish_string = 'ch' + str(num_channels -1)
+
+        values = theta_df_list.loc[:, start_string:finish_string].values
+        convolve_list = values.copy()
 
         # Number of points to calcualte
-        num_points = theta_df_list[0].shape[0]
+        num_points = theta_df_list.values.shape[0]
+
+        # We act on each column separately sadly
 
         delta_theta_list = -1.*np.ones(num_points, dtype=np.double)
         mean_h_list = -1.*np.ones(num_points, dtype=np.double)
@@ -821,13 +760,14 @@ class Image_Set():
                 delta_theta_list[i] = delta_theta_list[i - 1] + theta_step
 
             # Calculate the heterozygosity
-            multiplied = theta_f_list * (1 - convolve_list)
+            multiplied = values * (1 - convolve_list)
             # From multiplied, calculat the heterozygosity
-            h = multiplied.sum(axis=0)
-            mean_h_list[i] = h.mean()
+            av_channel_hetero = multiplied.mean(axis=0)
+            h = av_channel_hetero.sum()
+            mean_h_list[i] = h
 
             # Roll the convolve list by 1
-            convolve_list = np.roll(convolve_list, 1, axis=1)
+            convolve_list = np.roll(convolve_list, 1, axis=0)
 
         # Return theta between -pi and pi
         delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
