@@ -208,7 +208,7 @@ class Range_Expansion_Experiment():
 
         return result
 
-    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5):
+    def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5, **kwargs):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
 
@@ -217,8 +217,14 @@ class Range_Expansion_Experiment():
             cur_scaling = cur_im_set.get_scaling()
 
             desired_r = np.around(r_scaled / cur_scaling)
-            result, theta_list = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x)
-            cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
+            result, theta_list = None, None
+            cur_df = None
+            if nonlocal_quantity == 'hetero':
+                result, theta_list = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x, **kwargs)
+                cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
+            elif nonlocal_quantity == 'Fij':
+                result, theta_list = cur_im_set.get_nonlocal_Fij(desired_r, delta_x = delta_x, **kwargs)
+                cur_df = pd.DataFrame(data={'Fij':result, 'theta': theta_list})
 
             # Check for nan's caused by heterozygosity
 
@@ -254,6 +260,14 @@ class Range_Expansion_Experiment():
             print result[result.isnull().any(axis=1)]
 
         return result
+
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5):
+        return self.get_nonlocal_quantity_averaged('hetero', im_sets_to_use, r_scaled, num_theta_bins=num_theta_bins,
+                                                   delta_x=delta_x)
+
+    def get_nonlocal_Fij_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=250, delta_x=1.5):
+        return self.get_nonlocal_quantity_averaged('Fij', im_sets_to_use, r_scaled, i=i, j=j,
+                                                   num_theta_bins=num_theta_bins, delta_x=delta_x)
 
 class Image_Set():
     '''Homeland radius is used to get the center of the expansion now.'''
@@ -775,8 +789,8 @@ class Image_Set():
 
         return mean_h_list, delta_theta_list
 
-    def get_nonlocal_Fij(self, r, i, j, delta_x = 1.5):
-        """Keeps i constant, rotates j."""
+    def get_nonlocal_Fij(self, r, i=None, j=None, delta_x = 1.5):
+        """Keeps i constant, rotates j. If you do not set both i and j, an error will be thrown."""
         cur_frac_df = self.frac_df
 
         theta_df_list, theta_bins = self.bin_theta_at_r_df(cur_frac_df, r, delta_x = delta_x)
