@@ -741,7 +741,7 @@ class Image_Set():
 
         return cur_frac_df
 
-    def get_nonlocal_quantity(self, quantity, r, delta_x=1.5, i=None, j = None):
+    def get_nonlocal_quantity(self, quantity, r, delta_x=1.5, i=None, j=None):
         """Calculates nonlocal information based on the quantity keyword."""
         cur_frac_df = self.frac_df
 
@@ -802,98 +802,11 @@ class Image_Set():
 
     def get_nonlocal_hetero(self, r, delta_x = 1.5):
         """Calculates the heterozygosity at every theta."""
-        cur_frac_df = self.frac_df
-
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(cur_frac_df, r, delta_x = delta_x)
-        theta_step = theta_bins[1] - theta_bins[0]
-
-        # Grab the desired data
-        num_channels = self.fluorescent_mask.shape[0]
-        start_string = 'ch0'
-        finish_string = 'ch' + str(num_channels -1)
-
-        values = theta_df_list.loc[:, start_string:finish_string].values
-        convolve_list = values.copy()
-
-        # Number of points to calcualte
-        num_points = theta_df_list.values.shape[0]
-
-        # We act on each column separately sadly
-
-        delta_theta_list = -1.*np.ones(num_points, dtype=np.double)
-        mean_h_list = -1.*np.ones(num_points, dtype=np.double)
-        for i in range(num_points):
-            if i == 0:
-                delta_theta_list[i] = 0
-            else:
-                delta_theta_list[i] = delta_theta_list[i - 1] + theta_step
-
-            # Calculate the heterozygosity
-            multiplied = values * (1 - convolve_list)
-            # From multiplied, calculat the heterozygosity
-            av_channel_hetero = multiplied.mean(axis=0)
-            h = av_channel_hetero.sum()
-            mean_h_list[i] = h
-
-            # Roll the convolve list by 1
-            convolve_list = np.roll(convolve_list, 1, axis=0)
-
-        # Return theta between -pi and pi
-        delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
-
-        # Now sort based on theta
-        sorted_indices = np.argsort(delta_theta_list)
-        delta_theta_list = delta_theta_list[sorted_indices]
-        mean_h_list = mean_h_list[sorted_indices]
-
-        return mean_h_list, delta_theta_list
+        return self.get_nonlocal_quantity('hetero', r, delta_x = delta_x)
 
     def get_nonlocal_Fij(self, r, i=None, j=None, delta_x = 1.5):
-        """Keeps i constant, rotates j. If you do not set both i and j, an error will be thrown."""
-        cur_frac_df = self.frac_df
-
-        theta_df_list, theta_bins = self.bin_theta_at_r_df(cur_frac_df, r, delta_x = delta_x)
-        theta_step = theta_bins[1] - theta_bins[0]
-
-        # Grab the desired data
-        num_channels = self.fluorescent_mask.shape[0]
-        i_string = 'ch' + str(i)
-        j_string = 'ch' + str(j)
-
-        fi_values = theta_df_list.loc[:, i_string].values
-        fj_convolve_values = theta_df_list.loc[:, j_string].values
-
-        # Number of points to calcualte
-        num_points = theta_df_list.values.shape[0]
-
-        # We act on each column separately sadly
-
-        delta_theta_list = -1.*np.ones(num_points, dtype=np.double)
-        mean_Fij_list = -1.*np.ones(num_points, dtype=np.double)
-        for i in range(num_points):
-            if i == 0:
-                delta_theta_list[i] = 0
-            else:
-                delta_theta_list[i] = delta_theta_list[i - 1] + theta_step
-
-            # Calculate Fij
-            multiplied = fi_values * fj_convolve_values
-            # From multiplied, calculat the heterozygosity
-            av_Fij = multiplied.mean(axis=0)
-            mean_Fij_list[i] = av_Fij
-
-            # Roll the convolve list by 1
-            fj_convolve_values = np.roll(fj_convolve_values, 1, axis=0)
-
-        # Return theta between -pi and pi
-        delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
-
-        # Now sort based on theta
-        sorted_indices = np.argsort(delta_theta_list)
-        delta_theta_list = delta_theta_list[sorted_indices]
-        mean_Fij_list = mean_Fij_list[sorted_indices]
-
-        return mean_Fij_list, delta_theta_list
+        """Calculates F_ij at every theta along with its error."""
+        return self.get_nonlocal_quantity('Fij', r, delta_x=delta_x, i=i, j=j)
 
     def get_local_hetero_mask(self):
         local_hetero_mask = np.zeros((self.fractions.shape[1], self.fractions.shape[2]))
