@@ -741,6 +741,65 @@ class Image_Set():
 
         return cur_frac_df
 
+    def get_nonlocal_quantity(self, quantity, r, delta_x=1.5, i=None, j = None):
+        """Calculates nonlocal information based on the quantity keyword."""
+        cur_frac_df = self.frac_df
+
+        theta_df_list, theta_bins = self.bin_theta_at_r_df(cur_frac_df, r, delta_x = delta_x)
+        theta_step = theta_bins[1] - theta_bins[0]
+        num_channels = self.fluorescent_mask.shape[0]
+
+        # Grab the desired data
+        values = None
+        convolve_list = None
+        if quantity == 'hetero':
+            start_string = 'ch0'
+            finish_string = 'ch' + str(num_channels -1)
+
+            values = theta_df_list.loc[:, start_string:finish_string].values
+            convolve_list = values.copy()
+        elif quantity == 'Fij':
+            i_string = 'ch' + str(i)
+            j_string = 'ch' + str(j)
+
+            values = theta_df_list.loc[:, i_string].values
+            convolve_list = theta_df_list.loc[:, j_string].values
+
+        # Number of points to calcualte
+        num_points = theta_df_list.values.shape[0]
+        delta_theta_list = -1.*np.ones(num_points, dtype=np.double)
+        mean_list = -1.*np.ones(num_points, dtype=np.double)
+        for i in range(num_points):
+            if i == 0:
+                delta_theta_list[i] = 0
+            else:
+                delta_theta_list[i] = delta_theta_list[i - 1] + theta_step
+
+            if quantity =='hetero':
+                # Calculate the heterozygosity
+                multiplied = values * (1 - convolve_list)
+                av_channel_hetero = multiplied.mean(axis=0)
+                h = av_channel_hetero.sum()
+                mean_list[i] = h
+            elif quantity == 'Fij':
+                multiplied = values * convolve_list
+                av_Fij = multiplied.mean(axis=0)
+                mean_list[i] = av_Fij
+
+            # Roll the convolve list by 1
+            convolve_list = np.roll(convolve_list, 1, axis=0)
+
+        # Return theta between -pi and pi
+        delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
+
+        # Now sort based on theta
+        sorted_indices = np.argsort(delta_theta_list)
+        delta_theta_list = delta_theta_list[sorted_indices]
+        mean_list = mean_list[sorted_indices]
+
+        return mean_list, delta_theta_list
+
+
     def get_nonlocal_hetero(self, r, delta_x = 1.5):
         """Calculates the heterozygosity at every theta."""
         cur_frac_df = self.frac_df
