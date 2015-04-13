@@ -225,6 +225,9 @@ class Range_Expansion_Experiment():
             elif nonlocal_quantity == 'Fij':
                 result, theta_list = cur_im_set.get_nonlocal_Fij(desired_r, delta_x = delta_x, **kwargs)
                 cur_df = pd.DataFrame(data={'Fij':result, 'theta': theta_list})
+            elif nonlocal_quantity == 'Fij_sym':
+                result, theta_list = cur_im_set.get_nonlocal_Fij_sym(desired_r, delta_x = delta_x, **kwargs)
+                cur_df = pd.DataFrame(data={'Fij_sym':result, 'theta': theta_list})
 
             # Check for nan's caused by heterozygosity
 
@@ -261,12 +264,16 @@ class Range_Expansion_Experiment():
 
         return result
 
-    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5):
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5):
         return self.get_nonlocal_quantity_averaged('hetero', im_sets_to_use, r_scaled, num_theta_bins=num_theta_bins,
                                                    delta_x=delta_x)
 
-    def get_nonlocal_Fij_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=250, delta_x=1.5):
+    def get_nonlocal_Fij_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5):
         return self.get_nonlocal_quantity_averaged('Fij', im_sets_to_use, r_scaled, i=i, j=j,
+                                                   num_theta_bins=num_theta_bins, delta_x=delta_x)
+
+    def get_nonlocal_Fij_sym_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5):
+        return self.get_nonlocal_quantity_averaged('Fij_sym', im_sets_to_use, r_scaled, i=i, j=j,
                                                    num_theta_bins=num_theta_bins, delta_x=delta_x)
 
 class Image_Set():
@@ -749,9 +756,18 @@ class Image_Set():
         theta_step = theta_bins[1] - theta_bins[0]
         num_channels = self.fluorescent_mask.shape[0]
 
-        # Grab the desired data
+        ### Variables required for most functions ###
         values = None
         convolve_list = None
+
+        ### Variables required for Fij_sym ###
+        convolve_list_1 = None
+        convolve_list_2 = None
+        values_1 = None
+        values_2 = None
+
+        ### Grab desired data ###
+
         if quantity == 'hetero':
             start_string = 'ch0'
             finish_string = 'ch' + str(num_channels -1)
@@ -764,6 +780,15 @@ class Image_Set():
 
             values = theta_df_list.loc[:, i_string].values
             convolve_list = theta_df_list.loc[:, j_string].values
+        elif quantity == 'Fij_sym':
+            i_string = 'ch' + str(i)
+            j_string = 'ch' + str(j)
+
+            values_1 = theta_df_list.loc[:, i_string].values
+            convolve_list_1 = theta_df_list.loc[:, j_string].values
+
+            values_2 = theta_df_list.loc[:, j_string].values
+            convolve_list_2 = theta_df_list.loc[:, i_string].values
 
         # Number of points to calcualte
         num_points = theta_df_list.values.shape[0]
@@ -781,13 +806,21 @@ class Image_Set():
                 av_channel_hetero = multiplied.mean(axis=0)
                 h = av_channel_hetero.sum()
                 mean_list[i] = h
+
+                convolve_list = np.roll(convolve_list, 1, axis=0)
             elif quantity == 'Fij':
-                multiplied = values * convolve_list
+                multiplied = values*convolve_list
                 av_Fij = multiplied.mean(axis=0)
                 mean_list[i] = av_Fij
 
-            # Roll the convolve list by 1
-            convolve_list = np.roll(convolve_list, 1, axis=0)
+                convolve_list = np.roll(convolve_list, 1, axis=0)
+            elif quantity == 'Fij_sym':
+                multiplied = values_1 * convolve_list_1 + values_2 * convolve_list_2
+                av_Fij_sym = multiplied.mean(axis=0)
+                mean_list[i] = av_Fij_sym
+
+                convolve_list_1 = np.roll(convolve_list_1, 1, axis=0)
+                convolve_list_2 = np.roll(convolve_list_2, 1, axis=0)
 
         # Return theta between -pi and pi
         delta_theta_list[delta_theta_list > np.pi] -= 2*np.pi
@@ -807,6 +840,10 @@ class Image_Set():
     def get_nonlocal_Fij(self, r, i=None, j=None, delta_x = 1.5):
         """Calculates F_ij at every theta along with its error."""
         return self.get_nonlocal_quantity('Fij', r, delta_x=delta_x, i=i, j=j)
+
+    def get_nonlocal_Fij_sym(self, r, i=None, j=None, delta_x = 1.5):
+        """Calculates F_ij at every theta along with its error."""
+        return self.get_nonlocal_quantity('Fij_sym', r, delta_x=delta_x, i=i, j=j)
 
     def get_local_hetero_mask(self):
         local_hetero_mask = np.zeros((self.fractions.shape[1], self.fractions.shape[2]))
