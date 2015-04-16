@@ -719,9 +719,6 @@ class Image_Set():
         # First get the theta at the desired r; r should be an int
         theta_df = df.query('(radius >= @r - @delta_x/2.) & (radius < @r + @delta_x/2.)')
         # TODO Below is a very slow line, try to speed it up
-        if not df[df.isnull().any(axis=1)].empty:
-            print 'bin_theta_at_r_df has NaN due to r binning: r=' +str(r) + ', delta_x=' + str(delta_x), self.image_name
-            print theta_df[theta_df.isnull().any(axis=1)]
 
         theta_cut = pd.cut(theta_df['theta'], theta_bins)
         groups = theta_df.groupby(theta_cut)
