@@ -222,6 +222,9 @@ class Range_Expansion_Experiment():
             if nonlocal_quantity == 'hetero':
                 result, theta_list = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x, **kwargs)
                 cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
+            elif nonlocal_quantity == 'Ftot':
+                result, theta_list = cur_im_set.get_nonlocal_Ftot(desired_r, delta_x = delta_x, **kwargs)
+                cur_df = pd.DataFrame(data={'Ftot':result, 'theta': theta_list})
             elif nonlocal_quantity == 'Fij':
                 result, theta_list = cur_im_set.get_nonlocal_Fij(desired_r, delta_x = delta_x, **kwargs)
                 cur_df = pd.DataFrame(data={'Fij':result, 'theta': theta_list})
@@ -232,7 +235,7 @@ class Range_Expansion_Experiment():
             # Check for nan's caused by heterozygosity
 
             if not cur_df[cur_df.isnull().any(axis=1)].empty:
-                print 'Nonlocal heterozygosity returning nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
+                print 'Nonlocal quantity returning nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
                 print cur_df[cur_df.isnull().any(axis=1)]
 
             cur_df['radius_scaled'] = r_scaled
@@ -266,6 +269,10 @@ class Range_Expansion_Experiment():
 
     def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5):
         return self.get_nonlocal_quantity_averaged('hetero', im_sets_to_use, r_scaled, num_theta_bins=num_theta_bins,
+                                                   delta_x=delta_x)
+
+    def get_nonlocal_Ftot_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5):
+        return self.get_nonlocal_quantity_averaged('Ftot', im_sets_to_use, r_scaled, num_theta_bins=num_theta_bins,
                                                    delta_x=delta_x)
 
     def get_nonlocal_Fij_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5):
@@ -772,6 +779,12 @@ class Image_Set():
 
             values = theta_df_list.loc[:, start_string:finish_string].values
             convolve_list = values.copy()
+        elif quantity== 'Ftot':
+            start_string = 'ch0'
+            finish_string = 'ch' + str(num_channels -1)
+
+            values = theta_df_list.loc[:, start_string:finish_string].values
+            convolve_list = values.copy()
         elif quantity == 'Fij':
             i_string = 'ch' + str(i)
             j_string = 'ch' + str(j)
@@ -806,6 +819,11 @@ class Image_Set():
                 mean_list[i] = h
 
                 convolve_list = np.roll(convolve_list, 1, axis=0)
+            elif quantity =='Ftot':
+                multiplied = values * values
+                av_channel_hetero = multiplied.mean(axis=0)
+                Ftot = av_channel_hetero.sum()
+                mean_list[i] = Ftot
             elif quantity == 'Fij':
                 multiplied = values*convolve_list
                 av_Fij = multiplied.mean(axis=0)
@@ -834,6 +852,10 @@ class Image_Set():
     def get_nonlocal_hetero(self, r, delta_x = 1.5):
         """Calculates the heterozygosity at every theta."""
         return self.get_nonlocal_quantity('hetero', r, delta_x = delta_x)
+
+    def get_nonlocal_Ftot(self, r, delta_x = 1.5):
+        """Calculates Ftot every theta."""
+        return self.get_nonlocal_quantity('Ftot', r, delta_x = delta_x)
 
     def get_nonlocal_Fij(self, r, i=None, j=None, delta_x = 1.5):
         """Calculates F_ij at every theta along with its error."""
