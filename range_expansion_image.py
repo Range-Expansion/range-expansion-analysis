@@ -462,6 +462,10 @@ class Image_Set():
         if self._fluorescent_mask is None:
             try:
                 temp_mask = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
+                # We redefine the third channel as NOT the first two. We assume the third channel is black.
+                any_previous_channels = temp_mask[:-1].sum(axis=0) > 0
+                last_channel = ~any_previous_channels
+                temp_mask[-1] = last_channel
             except IOError:
                 print 'No channel masks found!'
                 return None
