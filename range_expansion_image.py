@@ -817,19 +817,21 @@ class Image_Set():
                 av_channel_hetero = multiplied.mean(axis=0)
                 h = av_channel_hetero.sum()
                 mean_list[i] = h
-
                 convolve_list = np.roll(convolve_list, 1, axis=0)
+
             elif quantity =='Ftot':
-                multiplied = values * values
+                multiplied = values * convolve_list
                 av_channel_hetero = multiplied.mean(axis=0)
                 Ftot = av_channel_hetero.sum()
                 mean_list[i] = Ftot
+                convolve_list = np.roll(convolve_list, 1, axis=0)
+
             elif quantity == 'Fij':
                 multiplied = values*convolve_list
                 av_Fij = multiplied.mean(axis=0)
                 mean_list[i] = av_Fij
-
                 convolve_list = np.roll(convolve_list, 1, axis=0)
+
             elif quantity == 'Fij_sym':
                 multiplied = values_1 * convolve_list_1 + values_2 * convolve_list_2
                 av_Fij_sym = multiplied.mean(axis=0)
