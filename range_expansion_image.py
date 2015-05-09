@@ -571,8 +571,12 @@ class Image_Set():
     def get_biorep_name(self):
         """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
         name = self.image_name
-        after_bio = name.split('bio')[1]
-        bio_name = after_bio.split('_')[0]
+        after_bio = name.split('bio')
+        bio_name = None
+        if len(after_bio) == 2:
+            bio_name = after_bio.split('_')[0]
+        else:
+            bio_name = 'no_bio_rep_info'
 
         return bio_name.lower()
 
