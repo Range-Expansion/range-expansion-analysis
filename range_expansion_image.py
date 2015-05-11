@@ -20,13 +20,12 @@ class Multi_Experiment(object):
     """Assumes that you don't have enough memory to store everything. Writes things to disk
        as we go."""
 
-    def __init__(self, experiment_list, complete_im_set_list, save_memory=False):
+    def __init__(self, experiment_list, complete_im_set_list):
         # Assumes that the images in the experiments are setup appropriately.
         self.experiment_list = experiment_list
         self.complete_im_sets_list = complete_im_set_list
         self.hetero_r_list = [2.5, 3, 4, 6, 8, 10] # Radii used to compare heterozygosity
         self.num_theta_bins_list = [500, 700, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
-        self.save_memory = save_memory
 
     def write_hetero_to_disk(self):
         h_list = []
@@ -38,7 +37,8 @@ class Multi_Experiment(object):
 
             # Make new directory for this experiment...give experiment a name
             for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
-                h = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins)
+                h = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
+                                                            skip_grouping=True)
                 h_list.append(h)
             h_info['h_list'] = h_list
             with open(experiment.title + '_hetero.pkl', 'wb') as fi:
@@ -238,9 +238,11 @@ class Range_Expansion_Experiment(object):
 
         return result
 
-    def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5, **kwargs):
+    def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5,
+                                       skip_grouping=False, **kwargs):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
+        midbins = (standard_theta_bins[1:] + standard_theta_bins[0:-1])/2.
 
         for im_set_index in im_sets_to_use:
             cur_im_set = self.image_set_list[im_set_index]
@@ -274,44 +276,42 @@ class Range_Expansion_Experiment(object):
             # Now bin on the standard theta bins
             theta_cut = pd.cut(cur_df['theta'], standard_theta_bins)
             cur_df = cur_df.groupby(theta_cut).mean()
+            cur_df['theta_midbin'] = midbins
 
             df_list.append(cur_df)
 
         # Now combine the df_list
         combined_df = pd.concat(df_list)
-        # Groupby the index which is theta
-        groups = combined_df.groupby(level=0, axis=0)
-        # Get statistics
-        result = groups.agg(['mean', sp.stats.sem])
-        # Sort the results by theta
-        result = result.sort([('theta', 'mean')])
-
-        # Return midbin
-        result['theta_midbin'] = (standard_theta_bins[1:] + standard_theta_bins[0:-1])/2.
+        if not skip_grouping:
+            # Groupby the index which is theta
+            groups = combined_df.groupby(level=0, axis=0)
+            # Get statistics
+            combined_df = groups.agg(['mean', sp.stats.sem])
+            # Sort the results by theta
+            combined_df = combined_df.sort([('theta', 'mean')])
 
         # Check for nan's due to binning
-
-        if not result[result.isnull().any(axis=1)].empty:
+        if not combined_df[combined_df.isnull().any(axis=1)].empty:
             print 'Binning is too tight; getting NaN at r=' + str(r_scaled)
-            print result[result.isnull().any(axis=1)]
+            print combined_df[combined_df.isnull().any(axis=1)]
 
-        return result
+        return combined_df
 
-    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5):
+    def get_nonlocal_hetero_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5, **kwargs):
         return self.get_nonlocal_quantity_averaged('hetero', im_sets_to_use, r_scaled, num_theta_bins=num_theta_bins,
-                                                   delta_x=delta_x)
+                                                   delta_x=delta_x, **kwargs)
 
-    def get_nonlocal_Ftot_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5):
+    def get_nonlocal_Ftot_averaged(self, im_sets_to_use, r_scaled, num_theta_bins=500, delta_x=1.5, **kwargs):
         return self.get_nonlocal_quantity_averaged('Ftot', im_sets_to_use, r_scaled, num_theta_bins=num_theta_bins,
-                                                   delta_x=delta_x)
+                                                   delta_x=delta_x, **kwargs)
 
-    def get_nonlocal_Fij_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5):
+    def get_nonlocal_Fij_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5, **kwargs):
         return self.get_nonlocal_quantity_averaged('Fij', im_sets_to_use, r_scaled, i=i, j=j,
-                                                   num_theta_bins=num_theta_bins, delta_x=delta_x)
+                                                   num_theta_bins=num_theta_bins, delta_x=delta_x, **kwargs)
 
-    def get_nonlocal_Fij_sym_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5):
+    def get_nonlocal_Fij_sym_averaged(self, im_sets_to_use, i, j, r_scaled, num_theta_bins=500, delta_x=1.5, **kwargs):
         return self.get_nonlocal_quantity_averaged('Fij_sym', im_sets_to_use, r_scaled, i=i, j=j,
-                                                   num_theta_bins=num_theta_bins, delta_x=delta_x)
+                                                   num_theta_bins=num_theta_bins, delta_x=delta_x, **kwargs)
 
 class Image_Set(object):
     '''Homeland radius is used to get the center of the expansion now.'''
