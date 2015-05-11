@@ -14,11 +14,41 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 import mahotas as mh
+import cPickle as pkl
 
-class Range_Expansion_Experiment():
-    def __init__(self, base_folder, cache=True, **kwargs):
+class Multi_Experiment(object):
+    """Assumes that you don't have enough memory to store everything. Writes things to disk
+       as we go."""
+
+    def __init__(self, experiment_list, complete_im_set_list, save_memory=False):
+        # Assumes that the images in the experiments are setup appropriately.
+        self.experiment_list = experiment_list
+        self.complete_im_sets_list = complete_im_set_list
+        self.hetero_r_list = [2.5, 3, 4, 6, 8, 10] # Radii used to compare heterozygosity
+        self.num_theta_bins_list = [500, 700, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
+        self.save_memory = save_memory
+
+    def write_hetero_to_disk(self):
+        h_list = []
+        for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
+
+            h_info = {}
+            h_info['r_list'] = self.hetero_r_list
+            h_info['num_theta_bins_list'] = self.num_theta_bins_list
+
+            # Make new directory for this experiment...give experiment a name
+            for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
+                h = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins)
+                h_list.append(h)
+            h_info['h_list'] = h_list
+            with open(experiment.title + '_hetero.pkl', 'wb') as fi:
+                pkl.dump(h_info, fi)
+
+class Range_Expansion_Experiment(object):
+    def __init__(self, base_folder, cache=True, title=None, **kwargs):
         """Cache determines whether data is cached; it can vastly speed up everything."""
         self.cache = cache
+        self.title=title
 
         self.path_dict = {}
         self.path_dict['circle_folder'] = base_folder + 'circle_radius/'
@@ -283,7 +313,7 @@ class Range_Expansion_Experiment():
         return self.get_nonlocal_quantity_averaged('Fij_sym', im_sets_to_use, r_scaled, i=i, j=j,
                                                    num_theta_bins=num_theta_bins, delta_x=delta_x)
 
-class Image_Set():
+class Image_Set(object):
     '''Homeland radius is used to get the center of the expansion now.'''
     def __init__(self, image_name, path_dict, cache=True, bigger_than_image=True):
         '''If cache is passed, a ton of memory is used but things will go MUCH faster.'''
@@ -959,7 +989,7 @@ class Image_Set():
         plt.ylabel(r'$H(r)$')
 
 
-class Bioformats_XML():
+class Bioformats_XML(object):
     def __init__(self, path):
         self.path = path
         self.xml_str = None
