@@ -787,7 +787,7 @@ class Image_Set(object):
 
         return cur_frac_df
 
-    def get_nonlocal_quantity(self, quantity, r, delta_x=1.5, i=None, j=None):
+    def get_nonlocal_quantity(self, quantity, r, delta_x=1.5, i=None, j=None, calculate_overlap=False):
         """Calculates nonlocal information based on the quantity keyword."""
         cur_frac_df = self.frac_df
 
@@ -882,6 +882,13 @@ class Image_Set(object):
         delta_theta_list = delta_theta_list[sorted_indices]
         mean_list = mean_list[sorted_indices]
 
+        # Calculate overlap, if necessary
+        if calculate_overlap:
+            # Get the overlap df
+            overlap_df = self.get_overlap_df(2)
+            # Calculate the average overlap at the desired radius r
+            delta_x = 1.5
+            overlap_at_radius = overlap_df.query('(radius >= @r - @delta_x/2.) & (radius < @r + @delta_x/2.)')
         return mean_list, delta_theta_list
 
 
@@ -915,7 +922,7 @@ class Image_Set(object):
     #### Overlap Images ####
 
     def get_overlap_image(self, num_overlap):
-        #sum_mask counts how many different colors are at each pixel
+        """Return a mask stating if there is an overlap of more than num_overlap colors."""
         cur_channel_mask = self.fluorescent_mask
         sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
         for i in range(cur_channel_mask.shape[0]):
@@ -926,6 +933,7 @@ class Image_Set(object):
 
 
     def get_overlap_df(self, num_overlap):
+        """Returns if there is an overlap or not."""
         edge_image = self.get_overlap_image(num_overlap)
 
         edge_df = self.image_coordinate_df.copy()
