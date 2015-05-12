@@ -28,10 +28,10 @@ class Multi_Experiment(object):
         self.num_theta_bins_list = [500, 700, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
     def write_hetero_to_disk(self):
-        h_list = []
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
-
+            h_list = []
             h_info = {}
+
             h_info['r_list'] = self.hetero_r_list
             h_info['num_theta_bins_list'] = self.num_theta_bins_list
 
