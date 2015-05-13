@@ -24,7 +24,7 @@ class Multi_Experiment(object):
         # Assumes that the images in the experiments are setup appropriately.
         self.experiment_list = experiment_list
         self.complete_im_sets_list = complete_im_set_list
-        self.hetero_r_list = [2.5, 3, 4, 6, 8, 10] # Radii used to compare heterozygosity
+        self.hetero_r_list = [3.5, 4, 5, 6, 8, 10] # Radii used to compare heterozygosity
         self.num_theta_bins_list = [500, 700, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
     def write_hetero_to_disk(self):
@@ -270,8 +270,6 @@ class Range_Expansion_Experiment(object):
             result = returned_dict['result']
             theta_list = returned_dict['theta_list']
             overlap = returned_dict['average_overlap']
-
-            print overlap
 
             # Create the df
             if overlap is None:
