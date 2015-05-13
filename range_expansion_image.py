@@ -25,7 +25,7 @@ class Multi_Experiment(object):
         self.experiment_list = experiment_list
         self.complete_im_sets_list = complete_im_set_list
         self.hetero_r_list = [3.5, 4, 5, 6, 8, 10] # Radii used to compare heterozygosity
-        self.num_theta_bins_list = [500, 700, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
+        self.num_theta_bins_list = [600, 700, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
     def write_hetero_to_disk(self):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
