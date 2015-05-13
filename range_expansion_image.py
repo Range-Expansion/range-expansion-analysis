@@ -38,7 +38,7 @@ class Multi_Experiment(object):
             # Make new directory for this experiment...give experiment a name
             for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
                 h = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
-                                                            skip_grouping=True)
+                                                            skip_grouping=True, calculate_overlap=True)
                 h_list.append(h)
             h_info['h_list'] = h_list
             with open(experiment.title + '_hetero.pkl', 'wb') as fi:
@@ -239,7 +239,7 @@ class Range_Expansion_Experiment(object):
         return result
 
     def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5,
-                                       skip_grouping=False, **kwargs):
+                                       skip_grouping=False, calculate_overlap=False, **kwargs):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
         midbins = (standard_theta_bins[1:] + standard_theta_bins[0:-1])/2.
@@ -249,23 +249,37 @@ class Range_Expansion_Experiment(object):
             cur_scaling = cur_im_set.get_scaling()
 
             desired_r = np.around(r_scaled / cur_scaling)
-            result, theta_list = None, None
-            cur_df = None
+            returned_dict, quantity_shortname = None, None
             if nonlocal_quantity == 'hetero':
-                result, theta_list = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x, **kwargs)
-                cur_df = pd.DataFrame(data={'h':result, 'theta': theta_list})
+                returned_dict = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x,
+                                                               calculate_overlap=calculate_overlap, **kwargs)
+                quantity_shortname = 'h'
             elif nonlocal_quantity == 'Ftot':
-                result, theta_list = cur_im_set.get_nonlocal_Ftot(desired_r, delta_x = delta_x, **kwargs)
-                cur_df = pd.DataFrame(data={'Ftot':result, 'theta': theta_list})
+                returned_dict = cur_im_set.get_nonlocal_Ftot(desired_r, delta_x=delta_x,
+                                                             calculate_overlap=calculate_overlap, **kwargs)
+                quantity_shortname = 'Ftot'
             elif nonlocal_quantity == 'Fij':
-                result, theta_list = cur_im_set.get_nonlocal_Fij(desired_r, delta_x = delta_x, **kwargs)
-                cur_df = pd.DataFrame(data={'Fij':result, 'theta': theta_list})
+                returned_dict = cur_im_set.get_nonlocal_Fij(desired_r, delta_x=delta_x,
+                                                            calculate_overlap=calculate_overlap, **kwargs)
+                quantity_shortname = 'Fij'
             elif nonlocal_quantity == 'Fij_sym':
-                result, theta_list = cur_im_set.get_nonlocal_Fij_sym(desired_r, delta_x = delta_x, **kwargs)
-                cur_df = pd.DataFrame(data={'Fij_sym':result, 'theta': theta_list})
+                returned_dict = cur_im_set.get_nonlocal_Fij_sym(desired_r, delta_x=delta_x,
+                                                                calculate_overlap=calculate_overlap, **kwargs)
+                quantity_shortname = 'Fij_sym'
+
+            result = returned_dict['result']
+            theta_list = returned_dict['theta_list']
+            overlap = returned_dict['average_overlap']
+
+            print overlap
+
+            # Create the df
+            if overlap is None:
+                cur_df = pd.DataFrame({quantity_shortname: result, 'theta': theta_list})
+            else:
+                cur_df = pd.DataFrame({quantity_shortname: result, 'theta': theta_list, 'overlap': overlap})
 
             # Check for nan's caused by heterozygosity
-
             if not cur_df[cur_df.isnull().any(axis=1)].empty:
                 print 'Nonlocal quantity returning nan rows from im_set=' + str(im_set_index) + ', r=' + str(r_scaled)
                 print cur_df[cur_df.isnull().any(axis=1)]
@@ -882,31 +896,39 @@ class Image_Set(object):
         delta_theta_list = delta_theta_list[sorted_indices]
         mean_list = mean_list[sorted_indices]
 
+        dict_to_return = {}
+        dict_to_return['result'] = mean_list
+        dict_to_return['theta_list'] = delta_theta_list
+        dict_to_return['average_overlap'] = None
+
         # Calculate overlap, if necessary
         if calculate_overlap:
-            # Get the overlap df
+            # Get the overlap df at that radius
             overlap_df = self.get_overlap_df(2)
-            # Calculate the average overlap at the desired radius r
+            #TODO: delta_x should probably be defined as a constant in this package
             delta_x = 1.5
             overlap_at_radius = overlap_df.query('(radius >= @r - @delta_x/2.) & (radius < @r + @delta_x/2.)')
-        return mean_list, delta_theta_list
+            fraction_overlap = float(np.sum(overlap_at_radius['overlap']))/overlap_at_radius.shape[0]
+            # Get the fraction in radians
+            average_angular_overlap = fraction_overlap * 2*np.pi
+            dict_to_return['average_overlap'] = average_angular_overlap
+        return dict_to_return
 
-
-    def get_nonlocal_hetero(self, r, delta_x = 1.5):
+    def get_nonlocal_hetero(self, r, delta_x = 1.5, **kwargs):
         """Calculates the heterozygosity at every theta."""
-        return self.get_nonlocal_quantity('hetero', r, delta_x = delta_x)
+        return self.get_nonlocal_quantity('hetero', r, delta_x = delta_x, **kwargs)
 
-    def get_nonlocal_Ftot(self, r, delta_x = 1.5):
+    def get_nonlocal_Ftot(self, r, delta_x = 1.5, **kwargs):
         """Calculates Ftot every theta."""
-        return self.get_nonlocal_quantity('Ftot', r, delta_x = delta_x)
+        return self.get_nonlocal_quantity('Ftot', r, delta_x = delta_x, **kwargs)
 
-    def get_nonlocal_Fij(self, r, i=None, j=None, delta_x = 1.5):
+    def get_nonlocal_Fij(self, r, i=None, j=None, delta_x = 1.5, **kwargs):
         """Calculates F_ij at every theta along with its error."""
-        return self.get_nonlocal_quantity('Fij', r, delta_x=delta_x, i=i, j=j)
+        return self.get_nonlocal_quantity('Fij', r, delta_x=delta_x, i=i, j=j, **kwargs)
 
-    def get_nonlocal_Fij_sym(self, r, i=None, j=None, delta_x = 1.5):
+    def get_nonlocal_Fij_sym(self, r, i=None, j=None, delta_x = 1.5, **kwargs):
         """Calculates F_ij at every theta along with its error."""
-        return self.get_nonlocal_quantity('Fij_sym', r, delta_x=delta_x, i=i, j=j)
+        return self.get_nonlocal_quantity('Fij_sym', r, delta_x=delta_x, i=i, j=j, **kwargs)
 
     def get_local_hetero_mask(self):
         local_hetero_mask = np.zeros((self.fractions.shape[1], self.fractions.shape[2]))
