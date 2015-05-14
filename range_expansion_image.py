@@ -27,22 +27,29 @@ class Multi_Experiment(object):
         self.hetero_r_list = [2.5, 3, 3.5, 4, 5, 6, 8, 10] # Radii used to compare heterozygosity
         self.num_theta_bins_list = [500, 600, 700, 800, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
-    def write_hetero_to_disk(self):
+    def write_nonlocal_quantity_to_disk(self, quantity, i= None, j=None):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
-            h_list = []
-            h_info = {}
+            quantity_list = []
+            quantity_info = {}
 
-            h_info['r_list'] = self.hetero_r_list
-            h_info['num_theta_bins_list'] = self.num_theta_bins_list
+            quantity_info['r_list'] = self.hetero_r_list
+            quantity_info['num_theta_bins_list'] = self.num_theta_bins_list
 
             # Make new directory for this experiment...give experiment a name
             for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
-                h = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
-                                                            skip_grouping=True, calculate_overlap=True)
-                h_list.append(h)
-            h_info['h_list'] = h_list
-            with open(experiment.title + '_hetero.pkl', 'wb') as fi:
-                pkl.dump(h_info, fi)
+                if quantity == 'hetero':
+                    quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
+                                                                skip_grouping=True, calculate_overlap=True)
+                elif quantity == 'Fij_sym':
+                    quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=theta_bins,
+                                                                skip_grouping=True, calculate_overlap=True)
+                elif quantity == 'Ftot':
+                    quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
+                                                                skip_grouping=True, calculate_overlap=True)
+                quantity_list.append(quantity)
+            quantity_info['quantity_list'] = quantity_list
+            with open(experiment.title + '_' + quantity + '.pkl', 'wb') as fi:
+                pkl.dump(quantity_info, fi)
 
     def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
