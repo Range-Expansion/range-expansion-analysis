@@ -44,9 +44,9 @@ class Multi_Experiment(object):
             with open(experiment.title + '_hetero.pkl', 'wb') as fi:
                 pkl.dump(h_info, fi)
 
-    def write_annih_coal_to_disk(self):
+    def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
-            combined_annih, combined_coal = experiment.get_cumulative_average_annih_coal(complete_im_sets)
+            combined_annih, combined_coal = experiment.get_cumulative_average_annih_coal(complete_im_sets, **kwargs)
             with open(experiment.title + '_annih.pkl', 'wb') as fi:
                 pkl.dump(combined_annih, fi)
             with open(experiment.title + '_coal.pkl', 'wb') as fi:
