@@ -44,6 +44,14 @@ class Multi_Experiment(object):
             with open(experiment.title + '_hetero.pkl', 'wb') as fi:
                 pkl.dump(h_info, fi)
 
+    def write_annih_coal_to_disk(self):
+        for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
+            combined_annih, combined_coal = experiment.get_cumulative_average_annih_coal(complete_im_sets)
+            with open(experiment.title + '_annih.pkl', 'wb') as fi:
+                pkl.dump(combined_annih, fi)
+            with open(experiment.title + '_coal.pkl', 'wb') as fi:
+                pkl.dump(combined_coal, fi)
+
 class Range_Expansion_Experiment(object):
     def __init__(self, base_folder, cache=True, title=None, **kwargs):
         """Cache determines whether data is cached; it can vastly speed up everything."""
@@ -616,7 +624,7 @@ class Image_Set(object):
         after_bio = name.split('bio')
         bio_name = None
         if len(after_bio) == 2:
-            bio_name = after_bio.split('_')[0]
+            bio_name = after_bio[1].split('_')[0]
         else:
             bio_name = 'no_bio_rep_info'
 
