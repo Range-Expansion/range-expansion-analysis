@@ -35,6 +35,7 @@ class Multi_Experiment(object):
             quantity_info['r_list'] = self.hetero_r_list
             quantity_info['num_theta_bins_list'] = self.num_theta_bins_list
             # Make new directory for this experiment...give experiment a name
+            count = 0
             for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
                 print r
                 quantity = None
@@ -48,6 +49,10 @@ class Multi_Experiment(object):
                     quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
                                                                 skip_grouping=True, calculate_overlap=True)
                 quantity_list.append(quantity)
+                #TODO: Remove this debug command
+                count += 1
+                if count == 2:
+                    break
             quantity_info['quantity_list'] = quantity_list
             if (i is None) and (j is None):
                 with open(experiment.title + '_' + quantity_str + '.pkl', 'wb') as fi:
