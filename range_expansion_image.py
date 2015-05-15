@@ -49,8 +49,12 @@ class Multi_Experiment(object):
                                                                 skip_grouping=True, calculate_overlap=True)
                 quantity_list.append(quantity)
             quantity_info['quantity_list'] = quantity_list
-            with open(experiment.title + '_' + quantity_str + '.pkl', 'wb') as fi:
-                pkl.dump(quantity_info, fi)
+            if (i is None) and (j is None):
+                with open(experiment.title + '_' + quantity_str + '.pkl', 'wb') as fi:
+                    pkl.dump(quantity_info, fi)
+            else:
+                with open(experiment.title + '_' + quantity_str + '_' + str(i) + str(j) + '.pkl', 'wb') as fi:
+                    pkl.dump(quantity_info, fi)
 
     def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
