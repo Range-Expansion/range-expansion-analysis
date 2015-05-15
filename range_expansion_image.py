@@ -53,7 +53,7 @@ class Multi_Experiment(object):
                 with open(experiment.title + '_' + quantity_str + '.pkl', 'wb') as fi:
                     pkl.dump(quantity_info, fi)
             else:
-                with open(experiment.title + '_' + quantity_str + '_' + str(i) + str(j) + '.pkl', 'wb') as fi:
+                with open(experiment.title + '_' + quantity_str + '_' + str(i) + '_' + str(j) + '.pkl', 'wb') as fi:
                     pkl.dump(quantity_info, fi)
 
     def write_annih_coal_to_disk(self, **kwargs):
