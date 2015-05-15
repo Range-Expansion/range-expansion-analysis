@@ -18,7 +18,7 @@ import cPickle as pkl
 
 class Multi_Experiment(object):
     """Assumes that you don't have enough memory to store everything. Writes things to disk
-       as we go."""
+       as we go. """
 
     def __init__(self, experiment_list, complete_im_set_list):
         # Assumes that the images in the experiments are setup appropriately.
