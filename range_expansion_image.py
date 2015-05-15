@@ -16,22 +16,29 @@ import scipy as sp
 import mahotas as mh
 import cPickle as pkl
 
-class Multi_Experiment(object):
+class Publication_Experiment(object):
     """Assumes that you don't have enough memory to store everything. Writes things to disk
-       as we go. """
+       as we go."""
 
-    def __init__(self, experiment_list, complete_im_set_list):
-        # Assumes that the images in the experiments are setup appropriately.
-        self.experiment_list = experiment_list
-        self.complete_im_sets_list = complete_im_set_list
+    def __init__(self, experiment_path, cache=False, title = None):
+        """Only one experiment per class now."""
+        self.experiment_path = experiment_path
+        self.title = title
+        self.cache = cache
+
         self.hetero_r_list = [2.5, 3, 3.5, 4, 5, 6, 8, 10] # Radii used to compare heterozygosity
         self.num_theta_bins_list = [500, 600, 700, 800, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
     def write_nonlocal_quantity_to_disk(self, quantity_str, i= None, j=None):
-        for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
+        for r, num_theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
+            print r
+
+            experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache)
+            complete_im_sets = experiment.get_complete_im_sets('masks_folder')
+            for q in complete_im_sets:
+                experiment.image_set_list[q].finish_setup()
 
             # Create a new folder for the desired quantity
-            folder_name = None
             if (i is None) and (j is None):
                 folder_name = experiment.title + '_' + quantity_str
             else:
@@ -40,26 +47,24 @@ class Multi_Experiment(object):
             if not os.path.exists(folder_name):
                 os.makedirs(folder_name)
 
-            for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
-                print r
-                quantity_info = {}
+            quantity_info = {}
 
-                quantity_info['r_list'] = self.hetero_r_list
-                quantity_info['num_theta_bins_list'] = self.num_theta_bins_list
+            quantity_info['r'] = r
+            quantity_info['num_theta_bins'] = num_theta_bins
 
-                quantity = None
-                if quantity_str == 'hetero':
-                    quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
-                                                                skip_grouping=True, calculate_overlap=True)
-                elif quantity_str == 'Fij_sym':
-                    quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=theta_bins,
-                                                                skip_grouping=True, calculate_overlap=True)
-                elif quantity_str == 'Ftot':
-                    quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
-                                                                skip_grouping=True, calculate_overlap=True)
-                quantity_info['quantity'] = quantity
-                with open(folder_name + '/' + str(r) + '.pkl', 'wb') as fi:
-                    pkl.dump(quantity_info, fi)
+            quantity = None
+            if quantity_str == 'hetero':
+                quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
+                                                            skip_grouping=True, calculate_overlap=True)
+            elif quantity_str == 'Fij_sym':
+                quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
+                                                            skip_grouping=True, calculate_overlap=True)
+            elif quantity_str == 'Ftot':
+                quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
+                                                            skip_grouping=True, calculate_overlap=True)
+            quantity_info['quantity'] = quantity
+            with open(folder_name + '/' + str(r) + '.pkl', 'wb') as fi:
+                pkl.dump(quantity_info, fi)
 
     def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
