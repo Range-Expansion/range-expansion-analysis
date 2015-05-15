@@ -34,9 +34,9 @@ class Multi_Experiment(object):
 
             quantity_info['r_list'] = self.hetero_r_list
             quantity_info['num_theta_bins_list'] = self.num_theta_bins_list
-
             # Make new directory for this experiment...give experiment a name
             for r, theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
+                print r
                 quantity = None
                 if quantity_str == 'hetero':
                     quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=theta_bins,
