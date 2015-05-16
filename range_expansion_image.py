@@ -33,7 +33,8 @@ class Publication_Experiment(object):
         for r, num_theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
             print r
 
-            experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache)
+            experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
+                                                    bigger_than_image=False)
             complete_im_sets = experiment.get_complete_im_sets('masks_folder')
             for q in complete_im_sets:
                 experiment.image_set_list[q].finish_setup()
@@ -62,9 +63,15 @@ class Publication_Experiment(object):
             elif quantity_str == 'Ftot':
                 quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True)
+            # Clear memory
+            del experiment
+
             quantity_info['quantity'] = quantity
             with open(folder_name + '/' + str(r) + '.pkl', 'wb') as fi:
                 pkl.dump(quantity_info, fi)
+
+            # Clear memory
+            del quantity_info
 
     def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
