@@ -36,8 +36,8 @@ class Publication_Experiment(object):
             experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
                                                     bigger_than_image=False)
             complete_im_sets = experiment.get_complete_im_sets('masks_folder')
-            for q in complete_im_sets:
-                experiment.image_set_list[q].finish_setup()
+            #for q in complete_im_sets:
+            #    experiment.image_set_list[q].finish_setup()
 
             # Create a new folder for the desired quantity
             if (i is None) and (j is None):
@@ -56,13 +56,16 @@ class Publication_Experiment(object):
             quantity = None
             if quantity_str == 'hetero':
                 quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
-                                                            skip_grouping=True, calculate_overlap=True)
+                                                            skip_grouping=True, calculate_overlap=True,
+                                                            initialize_and_clear_memory=True)
             elif quantity_str == 'Fij_sym':
                 quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
-                                                            skip_grouping=True, calculate_overlap=True)
+                                                            skip_grouping=True, calculate_overlap=True,
+                                                            initialize_and_clear_memory = True)
             elif quantity_str == 'Ftot':
                 quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
-                                                            skip_grouping=True, calculate_overlap=True)
+                                                            skip_grouping=True, calculate_overlap=True,
+                                                            initialize_and_clear_memory = True)
             # Clear memory
             del experiment
 
@@ -71,7 +74,9 @@ class Publication_Experiment(object):
                 pkl.dump(quantity_info, fi)
 
             # Clear memory
+            del quantity
             del quantity_info
+
 
     def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
@@ -276,13 +281,16 @@ class Range_Expansion_Experiment(object):
         return result
 
     def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5,
-                                       skip_grouping=False, calculate_overlap=False, **kwargs):
+                                       skip_grouping=False, calculate_overlap=False,
+                                       initialize_and_clear_memory=False, **kwargs):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
         midbins = (standard_theta_bins[1:] + standard_theta_bins[0:-1])/2.
 
         for im_set_index in im_sets_to_use:
             cur_im_set = self.image_set_list[im_set_index]
+            if initialize_and_clear_memory:
+                cur_im_set.finish_setup()
             cur_scaling = cur_im_set.get_scaling()
 
             desired_r = np.around(r_scaled / cur_scaling)
@@ -303,6 +311,9 @@ class Range_Expansion_Experiment(object):
                 returned_dict = cur_im_set.get_nonlocal_Fij_sym(desired_r, delta_x=delta_x,
                                                                 calculate_overlap=calculate_overlap, **kwargs)
                 quantity_shortname = 'Fij_sym'
+
+            if initialize_and_clear_memory:
+                cur_im_set.unitialize()
 
             result = returned_dict['result']
             theta_list = returned_dict['theta_list']
@@ -407,6 +418,27 @@ class Image_Set(object):
 
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
+
+    def unitialize(self):
+        self._brightfield_mask = None
+        self._homeland_mask = None
+        self._edges_mask = None
+        self._doctored_edges_mask = None
+        self._fluorescent_mask = None
+        self._image = None
+
+        # Other useful stuff for data analysis
+        self._image_coordinate_df = None
+        self._fractions = None
+        self._frac_df_list = None
+        self._center_df = None
+
+        # Information about the maximum radius of the data we care about
+        self.homeland_edge_radius = None
+        self.homeland_edge_radius_scaled = None
+
+        self.max_radius = None
+        self.max_radius_scaled = None
 
     ###### Circular Mask ######
     @property
