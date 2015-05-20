@@ -68,6 +68,10 @@ class Publication_Experiment(object):
                 quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory = True)
+            elif quantity_str == 'Fij':
+                quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
+                                                            skip_grouping=True, calculate_overlap=True,
+                                                            initialize_and_clear_memory = True)
             # Clear memory
             del experiment
 
@@ -79,7 +83,6 @@ class Publication_Experiment(object):
             del quantity
             del quantity_info
             gc.collect()
-
 
     def write_annih_coal_to_disk(self, **kwargs):
         for experiment, complete_im_sets in zip(self.experiment_list, self.complete_im_sets_list):
