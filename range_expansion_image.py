@@ -15,6 +15,8 @@ import numpy as np
 import scipy as sp
 import mahotas as mh
 import cPickle as pkl
+import gc
+
 
 class Publication_Experiment(object):
     """Assumes that you don't have enough memory to store everything. Writes things to disk
@@ -76,6 +78,7 @@ class Publication_Experiment(object):
             # Clear memory
             del quantity
             del quantity_info
+            gc.collect()
 
 
     def write_annih_coal_to_disk(self, **kwargs):
