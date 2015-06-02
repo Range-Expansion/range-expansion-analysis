@@ -18,6 +18,32 @@ import cPickle as pkl
 import gc
 
 
+
+def import_files_in_folder(title, quantity, i=None, j=None, base_directory='./'):
+    folder_name = title + '_' + quantity
+    if (i is not None) and (j is not None):
+        folder_name += '_' + str(i) + '_' + str(j)
+    folder_name += '/'
+
+    data_list = []
+
+    files_to_import = glob.glob(base_directory + folder_name + '*.pkl')
+    for file_path in files_to_import:
+        with open(file_path, 'rb') as fi:
+            data_list.append(pkl.load(fi))
+
+    return data_list
+
+def make_x_axis_radians(unit=0.25, pi_range = np.pi):
+    const = pi_range / np.pi
+    x_tick = np.arange(-const, const+unit, unit)
+
+    x_label = [r"$" + format(r, '.2g')+ r"\pi$" for r in x_tick]
+    ax = plt.gca()
+    ax.set_xticks(x_tick*np.pi)
+    ax.set_xticklabels(x_label)
+
+
 class Publication_Experiment(object):
     """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
