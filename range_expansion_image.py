@@ -107,16 +107,14 @@ class Publication_Experiment(object):
             gc.collect()
 
     def write_annih_coal_to_disk(self, **kwargs):
-        experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
-                                                    bigger_than_image=False)
-        complete_im_sets = experiment.get_complete_im_sets('annihilation_folder')
-        for q in complete_im_sets:
-            experiment.image_set_list[q].finish_setup()
 
-        combined_annih, combined_coal = experiment.get_cumulative_average_annih_coal(complete_im_sets, **kwargs)
-        with open(experiment.title + '_annih.pkl', 'wb') as fi:
+        for q in self.complete_annih:
+            self.experiment.image_set_list[q].finish_setup()
+
+        combined_annih, combined_coal = self.experiment.get_cumulative_average_annih_coal(self.complete_annih, **kwargs)
+        with open(self.experiment.title + '_annih.pkl', 'wb') as fi:
             pkl.dump(combined_annih, fi)
-        with open(experiment.title + '_coal.pkl', 'wb') as fi:
+        with open(self.experiment.title + '_coal.pkl', 'wb') as fi:
             pkl.dump(combined_coal, fi)
 
 class Range_Expansion_Experiment(object):
