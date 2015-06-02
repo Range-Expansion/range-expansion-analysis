@@ -17,56 +17,6 @@ import mahotas as mh
 import cPickle as pkl
 import gc
 
-def get_Fij_at_each_r(title, num_colors, base_directory='./'):
-    Fij_dict_list = {}
-    for i in range(num_colors):
-        for j in range(i, num_colors):
-            if i != j:
-                Fij_dict_list[i, j] = import_files_in_folder(title, 'Fij_sym', i=i, j=j, base_directory=base_directory)
-            else:
-                Fij_dict_list[i, j] = import_files_in_folder(title, 'Fij', i=i, j=j, base_directory=base_directory)
-
-    # We now want to organize each of these by radius. UGH.
-    # Actually, each thing is sorted by radius. Sooooooo, assuming we do the same
-    # radii for each, this isn't too bad.
-
-    num_radii = len(Fij_dict_list[0, 0])
-
-    Fij_at_each_r = []
-    for r_index in range(num_radii):
-        current_radius_Fij = {}
-        for i in range(num_colors):
-            for j in range(i, num_colors):
-                current_radius_Fij[i, j] = Fij_dict_list[i, j][r_index]
-        Fij_at_each_r.append(current_radius_Fij)
-
-    return Fij_at_each_r
-
-def import_files_in_folder(title, quantity, i=None, j=None, base_directory='./'):
-    folder_name = title + '_' + quantity
-    if (i is not None) and (j is not None):
-        folder_name += '_' + str(i) + '_' + str(j)
-    folder_name += '/'
-
-    data_list = []
-
-    files_to_import = glob.glob(base_directory + folder_name + '*.pkl')
-    for file_path in files_to_import:
-        with open(file_path, 'rb') as fi:
-            data_list.append(pkl.load(fi))
-
-    return data_list
-
-def make_x_axis_radians(unit=0.25, pi_range = np.pi):
-    const = pi_range / np.pi
-    x_tick = np.arange(-const, const+unit, unit)
-
-    x_label = [r"$" + format(r, '.2g')+ r"\pi$" for r in x_tick]
-    ax = plt.gca()
-    ax.set_xticks(x_tick*np.pi)
-    ax.set_xticklabels(x_label)
-
-
 class Publication_Experiment(object):
     """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
