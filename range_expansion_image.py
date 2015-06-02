@@ -30,23 +30,30 @@ class Publication_Experiment(object):
         self.hetero_r_list = [2.5, 3, 3.5, 4, 5, 6, 8, 10] # Radii used to compare heterozygosity
         self.num_theta_bins_list = [500, 600, 700, 800, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
+        self.experiment = None # Used to point to a current experiment
+        self.complete_masks = None
+        self.complete_annih = None
+
+        # Initialize the experiment
+        self.experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
+                                            bigger_than_image=False)
+        self.complete_masks = self.experiment.get_complete_im_sets('masks_folder')
+        self.complete_annih = self.experiment.get_complete_im_sets('annihilation_folder')
+
     def write_nonlocal_quantity_to_disk(self, quantity_str, i= None, j=None):
         # If caching, initialize the experiment once and go from there.
 
-        experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
-                                                bigger_than_image=False)
-        complete_im_sets = experiment.get_complete_im_sets('masks_folder')
         if self.cache:
-            for q in complete_im_sets:
-                    experiment.image_set_list[q].finish_setup()
+            for q in self.complete_masks:
+                    self.experiment.image_set_list[q].finish_setup()
 
         for r, num_theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
             print r
 
             if (i is None) and (j is None):
-                folder_name = experiment.title + '_' + quantity_str
+                folder_name = self.experiment.title + '_' + quantity_str
             else:
-                folder_name = experiment.title + '_' + quantity_str + '_' + str(i) + '_' + str(j)
+                folder_name = self.experiment.title + '_' + quantity_str + '_' + str(i) + '_' + str(j)
 
             if not os.path.exists(folder_name):
                 os.makedirs(folder_name)
@@ -65,25 +72,25 @@ class Publication_Experiment(object):
                 initialize_and_clear_memory = True
 
             if quantity_str == 'hetero':
-                quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
+                quantity = self.experiment.get_nonlocal_hetero_averaged(self.complete_masks, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory=initialize_and_clear_memory)
             elif quantity_str == 'Fij_sym':
-                quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
+                quantity = self.experiment.get_nonlocal_Fij_sym_averaged(self.complete_masks, i, j, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory = initialize_and_clear_memory)
             elif quantity_str == 'Ftot':
-                quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
+                quantity = self.experiment.get_nonlocal_Ftot_averaged(self.complete_masks, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory = initialize_and_clear_memory)
             elif quantity_str == 'Fij':
-                quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
+                quantity = self.experiment.get_nonlocal_Fij_sym_averaged(self.complete_masks, i, j, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory = initialize_and_clear_memory)
 
             # Clear memory
             if not self.cache:
-                del experiment
+                del self.experiment
 
             quantity_info['quantity'] = quantity
             with open(folder_name + '/' + str(r) + '.pkl', 'wb') as fi:
@@ -94,12 +101,10 @@ class Publication_Experiment(object):
             del quantity_info
 
             if not self.cache:
-                experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
+                self.experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
                                                 bigger_than_image=False)
 
             gc.collect()
-        del experiment
-        gc.collect()
 
     def write_annih_coal_to_disk(self, **kwargs):
         experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
