@@ -19,8 +19,7 @@ import gc
 
 
 class Publication_Experiment(object):
-    """Assumes that you don't have enough memory to store everything. Writes things to disk
-       as we go."""
+    """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
     def __init__(self, experiment_path, cache=False, title = None):
         """Only one experiment per class now."""
@@ -32,16 +31,18 @@ class Publication_Experiment(object):
         self.num_theta_bins_list = [500, 600, 700, 800, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
 
     def write_nonlocal_quantity_to_disk(self, quantity_str, i= None, j=None):
+        # If caching, initialize the experiment once and go from there.
+
+        experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
+                                                bigger_than_image=False)
+        complete_im_sets = experiment.get_complete_im_sets('masks_folder')
+        if self.cache:
+            for q in complete_im_sets:
+                    experiment.image_set_list[q].finish_setup()
+
         for r, num_theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
             print r
 
-            experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
-                                                    bigger_than_image=False)
-            complete_im_sets = experiment.get_complete_im_sets('masks_folder')
-            #for q in complete_im_sets:
-            #    experiment.image_set_list[q].finish_setup()
-
-            # Create a new folder for the desired quantity
             if (i is None) and (j is None):
                 folder_name = experiment.title + '_' + quantity_str
             else:
@@ -56,24 +57,33 @@ class Publication_Experiment(object):
             quantity_info['num_theta_bins'] = num_theta_bins
 
             quantity = None
+
+            # Determine if you need to clear memory and initialize...depends on if you want to cache
+            if self.cache:
+                initialize_and_clear_memory = False
+            else:
+                initialize_and_clear_memory = True
+
             if quantity_str == 'hetero':
                 quantity = experiment.get_nonlocal_hetero_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
-                                                            initialize_and_clear_memory=True)
+                                                            initialize_and_clear_memory=initialize_and_clear_memory)
             elif quantity_str == 'Fij_sym':
                 quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
-                                                            initialize_and_clear_memory = True)
+                                                            initialize_and_clear_memory = initialize_and_clear_memory)
             elif quantity_str == 'Ftot':
                 quantity = experiment.get_nonlocal_Ftot_averaged(complete_im_sets, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
-                                                            initialize_and_clear_memory = True)
+                                                            initialize_and_clear_memory = initialize_and_clear_memory)
             elif quantity_str == 'Fij':
                 quantity = experiment.get_nonlocal_Fij_sym_averaged(complete_im_sets, i, j, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
-                                                            initialize_and_clear_memory = True)
+                                                            initialize_and_clear_memory = initialize_and_clear_memory)
+
             # Clear memory
-            del experiment
+            if not self.cache:
+                del experiment
 
             quantity_info['quantity'] = quantity
             with open(folder_name + '/' + str(r) + '.pkl', 'wb') as fi:
@@ -82,6 +92,11 @@ class Publication_Experiment(object):
             # Clear memory
             del quantity
             del quantity_info
+
+            if not self.cache:
+                experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
+                                                bigger_than_image=False)
+
             gc.collect()
 
     def write_annih_coal_to_disk(self, **kwargs):
