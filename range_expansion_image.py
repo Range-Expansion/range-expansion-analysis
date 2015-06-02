@@ -98,6 +98,8 @@ class Publication_Experiment(object):
                                                 bigger_than_image=False)
 
             gc.collect()
+        del experiment
+        gc.collect()
 
     def write_annih_coal_to_disk(self, **kwargs):
         experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
