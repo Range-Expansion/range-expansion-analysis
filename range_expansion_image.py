@@ -17,7 +17,30 @@ import mahotas as mh
 import cPickle as pkl
 import gc
 
+def get_Fij_at_each_r(title, num_colors, base_directory='./'):
+    Fij_dict_list = {}
+    for i in range(num_colors):
+        for j in range(i, num_colors):
+            if i != j:
+                Fij_dict_list[i, j] = import_files_in_folder(title, 'Fij_sym', i=i, j=j, base_directory=base_directory)
+            else:
+                Fij_dict_list[i, j] = import_files_in_folder(title, 'Fij', i=i, j=j, base_directory=base_directory)
 
+    # We now want to organize each of these by radius. UGH.
+    # Actually, each thing is sorted by radius. Sooooooo, assuming we do the same
+    # radii for each, this isn't too bad.
+
+    num_radii = len(Fij_dict_list[0, 0])
+
+    Fij_at_each_r = []
+    for r_index in range(num_radii):
+        current_radius_Fij = {}
+        for i in range(num_colors):
+            for j in range(i, num_colors):
+                current_radius_Fij[i, j] = Fij_dict_list[i, j][r_index]
+        Fij_at_each_r.append(current_radius_Fij)
+
+    return Fij_at_each_r
 
 def import_files_in_folder(title, quantity, i=None, j=None, base_directory='./'):
     folder_name = title + '_' + quantity
@@ -110,7 +133,7 @@ class Publication_Experiment(object):
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory = initialize_and_clear_memory)
             elif quantity_str == 'Fij':
-                quantity = self.experiment.get_nonlocal_Fij_sym_averaged(self.complete_masks, i, j, r, num_theta_bins=num_theta_bins,
+                quantity = self.experiment.get_nonlocal_Fij_averaged(self.complete_masks, i, j, r, num_theta_bins=num_theta_bins,
                                                             skip_grouping=True, calculate_overlap=True,
                                                             initialize_and_clear_memory = initialize_and_clear_memory)
 
