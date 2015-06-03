@@ -191,10 +191,11 @@ class Range_Expansion_Experiment(object):
             fracs = cur_im_set.get_fracs_at_radius()
             fracs['im_set'] = index
             fracs['bio_replicate'] = cur_im_set.get_biorep_name()
+            fracs.reset_index(inplace=True, drop=True)
 
             frac_list.append(fracs)
 
-        #frac_concat = pd.concat(frac_list)
+        frac_concat = pd.concat(frac_list)
         return frac_concat
 
 
@@ -770,7 +771,6 @@ class Image_Set(object):
     def get_fracs_at_radius(self):
         """Gets fractions binned at all radii."""
         cur_frac_df = self.frac_df
-
         binned_by_radius, bins = self.bin_image_coordinate_r_df(cur_frac_df)
 
         return binned_by_radius
