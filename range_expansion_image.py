@@ -194,8 +194,8 @@ class Range_Expansion_Experiment(object):
 
             frac_list.append(fracs)
 
-        frac_concat = pd.concat(frac_list)
-        return frac_concat
+        #frac_concat = pd.concat(frac_list)
+        return frac_list
 
 
     @staticmethod
