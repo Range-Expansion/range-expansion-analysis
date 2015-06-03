@@ -118,15 +118,10 @@ class Publication_Experiment(object):
 
     def write_fraction_trajectories_to_disk(self, min_radius=2.5, max_radius=10):
         "Don't worry about memory here."
-        frac_list = []
-        for index in self.complete_masks:
-            cur_im_set = self.experiment.image_set_list[index]
-            fracs = cur_im_set.get_fracs_at_radius()
-            bigger_than_homeland = fracs['radius_midbin_scaled'] > min_radius
-            cutoff = fracs['radius_midbin_scaled'] < max_radius
 
-            fracs_binned = fracs.loc[np.logical_and(bigger_than_homeland, cutoff), :]
-            frac_list.append(fracs_binned)
+        fracs = self.experiment.get_fractions_concat(self.complete_masks)
+        fracs = fracs.loc[fracs['radius_midbin_scaled'] > min_radius, :]
+        fracs = fracs.loc[fracs['radius_midbin_scaled'] < max_radius, :]
 
         # Write the information to disk
         folder_name = self.experiment.title + '_fractions'
@@ -134,7 +129,7 @@ class Publication_Experiment(object):
             os.makedirs(folder_name)
 
         with open(folder_name + '/fractions.pkl', 'wb') as fi:
-            pkl.dump(frac_list, fi)
+            pkl.dump(fracs, fi)
 
 
 class Range_Expansion_Experiment(object):
