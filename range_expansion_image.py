@@ -422,7 +422,7 @@ class Range_Expansion_Experiment(object):
 
 class Image_Set(object):
     '''Homeland radius is used to get the center of the expansion now.'''
-    def __init__(self, image_name, path_dict, cache=True, bigger_than_image=True):
+    def __init__(self, image_name, path_dict, cache=True, bigger_than_image=True, black_strain=False):
         '''If cache is passed, a ton of memory is used but things will go MUCH faster.'''
         self.image_name = image_name
         self.path_dict = path_dict
@@ -456,6 +456,8 @@ class Image_Set(object):
 
         self.max_radius = None
         self.max_radius_scaled = None
+
+        self.black_strain = black_strain
 
     def finish_setup(self):
         # Initialize rest of required stuff
@@ -742,6 +744,12 @@ class Image_Set(object):
 
     def get_fractions_mask(self):
         cur_channel_mask = self.fluorescent_mask
+        if self.black_strain:
+            # Create a black color...the absence of the other two
+            black_channel = ~np.all(cur_channel_mask, axis=0)
+            print black_channel
+            cur_channel_mask = np.append(cur_channel_mask, black_channel, axis=0)
+
         if cur_channel_mask is not None:
             sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
             for i in range(cur_channel_mask.shape[0]):
