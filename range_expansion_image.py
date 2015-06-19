@@ -746,9 +746,8 @@ class Image_Set(object):
         cur_channel_mask = self.fluorescent_mask
         if self.black_strain:
             # Create a black color...the absence of the other two
-            black_channel = ~np.all(cur_channel_mask, axis=0)
-            print black_channel
-            cur_channel_mask = np.append(cur_channel_mask, black_channel, axis=0)
+            black_channel = ~np.any(cur_channel_mask, axis=0)
+            cur_channel_mask = np.insert(cur_channel_mask, cur_channel_mask.shape[0], black_channel, axis=0)
 
         if cur_channel_mask is not None:
             sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
