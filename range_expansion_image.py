@@ -747,6 +747,10 @@ class Image_Set(object):
         if self.black_strain:
             # Create a black color...the absence of the other two
             black_channel = ~np.any(cur_channel_mask, axis=0)
+            # Enlarge it slightly so the overlap is about correct. Kind of hoaky.
+            enlarger = ski.morphology.diamond(10)
+            black_channel = ski.morphology.binary_dilation(black_channel, selem=enlarger)
+
             cur_channel_mask = np.insert(cur_channel_mask, cur_channel_mask.shape[0], black_channel, axis=0)
 
         if cur_channel_mask is not None:
