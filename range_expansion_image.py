@@ -350,6 +350,31 @@ class Range_Expansion_Experiment(object):
 
         return result
 
+    def get_black_corrected_average_frac(self, im_sets_to_use, min_r = 2.5, max_r = 10, num_bins = 300):
+
+        num_channels = self.image_set_list[im_sets_to_use[0]].fluorescent_mask.shape[0]
+
+        r_scaled = np.linspace(min_r, max_r, num_bins)
+        df_list = []
+        for i in im_sets_to_use:
+            cur_im_set = self.image_set_list[i]
+
+            cur_scaling = cur_im_set.get_scaling()
+            r_pixel = np.around(r_scaled / cur_scaling)
+            fracs = cur_im_set.get_average_fractions_black_corrected(r_pixel)
+            frac_dict = {}
+            for ch_num in range(num_channels):
+                frac_dict['ch' + str(ch_num)] = fracs[:, ch_num]
+            frac_dict['imset_index'] = i
+
+            frac_dict['radius_scaled'] = r_scaled
+
+            cur_df = pd.DataFrame(frac_dict)
+            df_list.append(cur_df)
+        df_list = pd.concat(df_list)
+
+        return df_list
+
     def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5,
                                        skip_grouping=False, calculate_overlap=False,
                                        initialize_and_clear_memory=False, **kwargs):
@@ -650,15 +675,21 @@ class Image_Set(object):
             except IOError:
                 print 'No channel masks found!'
                 return None
-            if self.black_strain:
-                # Create a black color...the absence of the other two
-                black_channel = ~np.any(temp_mask, axis=0)
-                temp_mask = np.insert(temp_mask, temp_mask.shape[0], black_channel, axis=0)
-
-            elif self.set_black_channel is not None:
+            if self.set_black_channel is not None:
                 indices = np.ones(temp_mask.shape[0]) > 0
                 indices[self.set_black_channel] = False
                 temp_mask = temp_mask[indices, :, :]
+            if self.black_strain or self.set_black_channel is not None:
+                # Create a black color...the absence of the other two
+                black_channel = ~np.any(temp_mask, axis=0)
+
+                insert_location = None
+                if self.set_black_channel is not None:
+                    insert_location = self.set_black_channel
+                else:
+                    insert_location = temp_mask.shape[0]
+
+                temp_mask = np.insert(temp_mask, insert_location, black_channel, axis=0)
 
             if self.cache:
                 self._fluorescent_mask = temp_mask
@@ -763,7 +794,8 @@ class Image_Set(object):
 
     ####### Main Functions #######
 
-    def get_fractions_black_corrected_overlap(self, r_steps):
+    def get_average_fractions_black_corrected(self, r_steps):
+        # TODO: I am forgetting to expand all of the requisite regions
         # Get the fractions in steps of 1.5pixels
 
         cur_masks = self.fluorescent_mask
@@ -791,8 +823,11 @@ class Image_Set(object):
                     overlap_bool = np.logical_or(overlap_bool, domains[:, i] & domains[:, j])
             starts, stops, lengths = contiguous_regions(overlap_bool)
 
+            print lengths
+
             average_percolor_overlap = np.rint(np.mean(lengths)/2)
-            # Now adjust the black region appropriately
+
+            # Now adjust the black region appropriately...
             black_index = None
             if self.set_black_channel:
                 black_index = self.set_black_channel
@@ -800,26 +835,43 @@ class Image_Set(object):
                 black_index = num_channels - 1
             black_domain = domains[:, black_index]
 
+
             starts, stops, lengths = contiguous_regions(black_domain)
-            starts -= average_percolor_overlap
-            starts = starts % black_domain.shape[0]
 
-            stops += average_percolor_overlap
-            stops = stops % black_domain.shape[0]
+            if lengths.shape[0] == 0:
+                black_domain[:] = True
+            else:
 
-            # Now recreate the array
-            for cur_start, cur_stop in starts, stops:
-                black_domain[cur_start:cur_stop] = True
-            # Now reinsert it
-            domains[:, black_index] = black_domain
+                starts -= average_percolor_overlap
+                stops += average_percolor_overlap
+
+                # Now recreate the array
+                for cur_start, cur_stop in zip(starts, stops):
+
+                    if cur_start < 0:
+                        black_domain[cur_start:] = True
+                        cur_start = 0
+
+                    num_elements = black_domain.shape[0]
+
+                    if cur_stop > num_elements:
+                        black_domain[0:cur_stop % num_elements] = True
+                        cur_stop = num_elements
+
+                    black_domain[cur_start:cur_stop] = True
+
+                # Now reinsert it
+                domains[:, black_index] = black_domain
 
             # Now calculate the fractions
             totals = domains.sum(axis=1, dtype=np.float64)
-            fractions = domains/totals
+            fractions = domains/totals[:, None]
+
+            fractions = fractions.mean(axis=0)
 
             frac_list.append(fractions)
 
-        return frac_list
+        return np.array(frac_list)
 
     def get_biorep_name(self):
         """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
