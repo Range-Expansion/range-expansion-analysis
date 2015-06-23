@@ -650,10 +650,16 @@ class Image_Set(object):
             except IOError:
                 print 'No channel masks found!'
                 return None
-            if self.set_black_channel is not None:
+            if self.black_strain:
+                # Create a black color...the absence of the other two
+                black_channel = ~np.any(temp_mask, axis=0)
+                temp_mask = np.insert(temp_mask, temp_mask.shape[0], black_channel, axis=0)
+
+            elif self.set_black_channel is not None:
                 indices = np.ones(temp_mask.shape[0]) > 0
                 indices[self.set_black_channel] = False
                 temp_mask = temp_mask[indices, :, :]
+
             if self.cache:
                 self._fluorescent_mask = temp_mask
                 return self._fluorescent_mask
@@ -831,11 +837,6 @@ class Image_Set(object):
 
     def get_fractions_mask(self):
         cur_channel_mask = self.fluorescent_mask
-        if self.black_strain:
-            # Create a black color...the absence of the other two
-            black_channel = ~np.any(cur_channel_mask, axis=0)
-            cur_channel_mask = np.insert(cur_channel_mask, cur_channel_mask.shape[0], black_channel, axis=0)
-
         if cur_channel_mask is not None:
             sum_mask = np.zeros((cur_channel_mask.shape[1], cur_channel_mask.shape[2]))
             for i in range(cur_channel_mask.shape[0]):
