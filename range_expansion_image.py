@@ -770,6 +770,8 @@ class Image_Set(object):
             mask_df[string] = mask.ravel()
             count += 1
 
+        frac_list = []
+
         for cur_r in r_steps:
             # It would make more sense to go from the fluorescence directly, but this is a shortcut
             masks_binned, theta = self.bin_theta_at_r_df(mask_df, cur_r)
@@ -783,7 +785,35 @@ class Image_Set(object):
                     overlap_bool = np.logical_or(overlap_bool, domains[:, i] & domains[:, j])
             starts, stops, lengths = contiguous_regions(overlap_bool)
 
-        return domains
+            average_percolor_overlap = np.rint(np.mean(lengths)/2)
+            # Now adjust the black region appropriately
+            black_index = None
+            if self.set_black_channel:
+                black_index = self.set_black_channel
+            else: # Assume the black domain is the third one here.
+                black_index = num_channels - 1
+            black_domain = domains[:, black_index]
+
+            starts, stops, lengths = contiguous_regions(black_domain)
+            starts -= average_percolor_overlap
+            starts = starts % black_domain.shape[0]
+
+            stops += average_percolor_overlap
+            stops = stops % black_domain.shape[0]
+
+            # Now recreate the array
+            for cur_start, cur_stop in starts, stops:
+                black_domain[cur_start:cur_stop] = True
+            # Now reinsert it
+            domains[:, black_index] = black_domain
+
+            # Now calculate the fractions
+            totals = domains.sum(axis=1, dtype=np.float64)
+            fractions = domains/totals
+
+            frac_list.append(fractions)
+
+        return frac_list
 
     def get_biorep_name(self):
         """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
