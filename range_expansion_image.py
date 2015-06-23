@@ -757,8 +757,10 @@ class Image_Set(object):
             # Create a black color...the absence of the other two
             black_channel = ~np.any(cur_channel_mask, axis=0)
             # Enlarge it slightly so the overlap is about correct. Kind of hoaky.
-            enlarger = self.structure_element(self.black_overlap)
-            black_channel = ski.morphology.binary_dilation(black_channel, selem=enlarger)
+            #enlarger = self.structure_element(self.black_overlap)
+            for i in range(self.black_overlap):
+                # New attempt
+                black_channel = ski.morphology.binary_dilation(black_channel)
 
             cur_channel_mask = np.insert(cur_channel_mask, cur_channel_mask.shape[0], black_channel, axis=0)
 
