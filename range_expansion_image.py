@@ -898,7 +898,7 @@ class Image_Set(object):
         theta_bins = theta_bins[:-1]
 
         # First get the theta at the desired r; r should be an int
-        theta_df = df.query('(radius >= @r - @delta_x/2.) & (radius < @r + @delta_x/2.)')
+        theta_df = df.query('(radius >= @r - 0.75) & (radius < @r + 0.75)')
         # TODO Below is a very slow line, try to speed it up
 
         theta_cut = pd.cut(theta_df['theta'], theta_bins)
