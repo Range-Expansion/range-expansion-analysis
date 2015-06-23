@@ -17,6 +17,29 @@ import mahotas as mh
 import cPickle as pkl
 import gc
 
+def contiguous_regions(condition):
+    """Finds contiguous True regions of the boolean array "condition". Returns
+    three 1d arrays:  start indicies, stop indicies and lengths of contigous regions
+    """
+
+    d = np.diff(condition)
+    idx, = d.nonzero()
+    idx += 1 # need to shift indices because of diff
+
+    if condition[0]:
+        # If the start of condition is True prepend a 0
+        idx = np.r_[0, idx]
+
+    if condition[-1]:
+        # If the end of condition is True, append the length of the array
+        idx = np.r_[idx, condition.size] # Edit
+
+    starts = idx[0::2]
+    stops = idx[1::2]
+    lengths = stops - starts
+
+    return starts, stops, lengths
+
 class Publication_Experiment(object):
     """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
@@ -733,6 +756,34 @@ class Image_Set(object):
         del self._image_coordinate_df
 
     ####### Main Functions #######
+
+    def get_fractions_black_corrected_overlap(self, r_steps):
+        # Get the fractions in steps of 1.5pixels
+
+        cur_masks = self.fluorescent_mask
+        num_channels = cur_masks.shape[0]
+
+        mask_df =  self.image_coordinate_df
+        count = 0
+        for mask in cur_masks:
+            string = 'ch' + str(count)
+            mask_df[string] = mask.ravel()
+            count += 1
+
+        for cur_r in r_steps:
+            # It would make more sense to go from the fluorescence directly, but this is a shortcut
+            masks_binned, theta = self.bin_theta_at_r_df(mask_df, cur_r)
+            # Get average overlap
+
+            domains = masks_binned.loc[:, 'ch0':'ch' + str(num_channels - 1)].values
+            domains = domains > 0
+            overlap_bool = np.zeros(domains.shape[0])
+            for i in range(num_channels):
+                for j in range(i + 1, num_channels):
+                    overlap_bool = np.logical_or(overlap_bool, domains[:, i] & domains[:, j])
+            starts, stops, lengths = contiguous_regions(overlap_bool)
+
+        return domains
 
     def get_biorep_name(self):
         """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
