@@ -823,9 +823,8 @@ class Image_Set(object):
                     overlap_bool = np.logical_or(overlap_bool, domains[:, i] & domains[:, j])
             starts, stops, lengths = contiguous_regions(overlap_bool)
 
-            print lengths
-
             average_percolor_overlap = np.rint(np.mean(lengths)/2)
+
 
             # Now adjust the black region appropriately...
             black_index = None
@@ -857,6 +856,8 @@ class Image_Set(object):
                     if cur_stop > num_elements:
                         black_domain[0:cur_stop % num_elements] = True
                         cur_stop = num_elements
+
+                    print cur_start, cur_stop
 
                     black_domain[cur_start:cur_stop] = True
 
