@@ -755,9 +755,16 @@ class Image_Set(object):
         cur_channel_mask = self.fluorescent_mask
         if self.black_strain:
             # Create a black color...the absence of the other two
-            black_channel = ~np.any(cur_channel_mask, axis=0)
+
+            # We now create an eroded channel mask
+            shrinker = self.structure_element(self.black_overlap)
+            eroded_mask = np.ones_like(cur_channel_mask) > 0
+            for i in range(cur_channel_mask.shape[0]):
+                eroded_mask[i] = ski.morphology.binary_erosion(cur_channel_mask[i], selem=shrinker)
+
+            black_channel = ~np.any(eroded_mask, axis=0)
             # Enlarge it slightly so the overlap is about correct. Kind of hoaky.
-            #enlarger = self.structure_element(self.black_overlap)
+
             for i in range(self.black_overlap):
                 # New attempt
                 black_channel = ski.morphology.binary_dilation(black_channel)
