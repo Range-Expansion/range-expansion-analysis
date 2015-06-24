@@ -16,6 +16,7 @@ import scipy as sp
 import mahotas as mh
 import cPickle as pkl
 import gc
+import seaborn as sns
 
 def contiguous_regions(condition):
     """Finds contiguous True regions of the boolean array "condition". Returns
@@ -154,6 +155,26 @@ class Publication_Experiment(object):
         with open(folder_name + '/fractions.pkl', 'wb') as fi:
             pkl.dump(fracs, fi)
 
+
+    #### Plotting Methods ####
+
+    @staticmethod
+    def plot_average_domain_cdf(domain_df, r_bins, channel_num):
+        colors_to_use = sns.cubehelix_palette(n_colors=r_bins.shape[0])
+
+        count = 0
+        cur_channel = 0
+        for i in range(r_bins.shape[0]): # Number of bins
+            cur_data = domain_df[cur_channel, i]
+            mean_data = cur_data.groupby(level=0).agg('mean')
+            plt.plot(mean_data['lengths_scaled_midbin'], mean_data['ecdf'],
+                    color=colors_to_use[count], label=r_bins[i])
+            count += 1
+
+        plt.title('Average Empirical CDF of Domain Sizes (ch' + str(channel_num) + ') vs. R')
+        plt.legend(loc='best')
+        plt.xlabel('Domain Size (mm)')
+        plt.ylabel('Average Empirical CDF')
 
 class Range_Expansion_Experiment(object):
     def __init__(self, base_folder, cache=True, title=None, **kwargs):
