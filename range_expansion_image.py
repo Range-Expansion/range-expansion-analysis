@@ -378,7 +378,7 @@ class Range_Expansion_Experiment(object):
         return df_list
 
     def get_domain_sizes_at_radii(self, im_sets_to_use, min_r = 2.5, max_r = 10, num_bins = 300, input_bins=None):
-
+        """Returns a dictionary with keys dict[channel_num, radius_index (i.e. 12th bin in the radius index)"""
         if input_bins is None:
             r_scaled = np.linspace(min_r, max_r, num_bins)
         else:
@@ -399,9 +399,28 @@ class Range_Expansion_Experiment(object):
                 r_index_count += 1
 
                 df_list.append(domains_df)
-        df_list = pd.concat(df_list)
+        domain_sizes = pd.concat(df_list)
 
-        return df_list
+        # Now organize this data.
+
+        data_dict = {}
+
+        length_bins = np.linspace(0, 30, 800)
+
+        for cur_channel, channel_data in domain_sizes.groupby('channel'):
+            for cur_rindex, data_at_r in channel_data.groupby('r_index_count'):
+                # We now get the average CDF per image...ugh.
+                cdf_list = []
+                for imset_index, image_df in data_at_r.groupby('imset_index'):
+                    cumulative_counts = self.get_cumsum_quantity(image_df, length_bins, quantity='lengths_scaled')
+                    cumulative_counts['imset_index'] = imset_index
+                    cumulative_counts['ecdf'] = cumulative_counts['cumsum'] / cumulative_counts['cumsum'].max()
+                    cdf_list.append(cumulative_counts)
+                    #print image_df['lengths_scaled']
+
+                data_dict[cur_channel, cur_rindex] = pd.concat(cdf_list)
+
+        return data_dict
 
     def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5,
                                        skip_grouping=False, calculate_overlap=False,
