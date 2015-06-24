@@ -155,6 +155,17 @@ class Publication_Experiment(object):
         with open(folder_name + '/fractions.pkl', 'wb') as fi:
             pkl.dump(fracs, fi)
 
+    def write_domain_sizes_to_disk(self):
+        domain_sizes = self.experiment.get_domain_sizes_at_radii(self.complete_masks, input_bins=self.hetero_r_list)
+        domain_sizes['radius_scaled_used'] = self.hetero_r_list
+
+        # Write the information to disk
+        folder_name = self.experiment.title + '_domain_sizes'
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+
+        with open(folder_name + '/domain_sizes.pkl', 'wb') as fi:
+            pkl.dump(domain_sizes, fi)
 
     #### Plotting Methods ####
 
