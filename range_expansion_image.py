@@ -223,10 +223,10 @@ class Range_Expansion_Experiment(object):
 
 
     @staticmethod
-    def bin_annih_or_coal(df, bins):
+    def get_cumsum_quantity(df, bins, quantity='radius_scaled'):
         """Calculates cumulative sums for annihilations/coalescences along bins which can later be averaged."""
         df['count'] = 1
-        cut = pd.cut(df['radius_scaled'], bins)
+        cut = pd.cut(df[quantity], bins)
         gb = df.groupby(cut)
         mean_bins = gb.agg('sum')
         mean_bins.loc[pd.isnull(mean_bins['count']), 'count'] = 0
@@ -246,8 +246,8 @@ class Range_Expansion_Experiment(object):
             cur_im_set = self.image_set_list[index]
             annih, coal = cur_im_set.get_annih_and_coal()
 
-            binned_annih = Range_Expansion_Experiment.bin_annih_or_coal(annih, new_r_bins)
-            binned_coal  = Range_Expansion_Experiment.bin_annih_or_coal(coal, new_r_bins)
+            binned_annih = Range_Expansion_Experiment.get_cumsum_quantity(annih, new_r_bins)
+            binned_coal  = Range_Expansion_Experiment.get_cumsum_quantity(coal, new_r_bins)
 
             binned_annih['index'] = index
             binned_coal['index'] = index
@@ -371,6 +371,29 @@ class Range_Expansion_Experiment(object):
 
             cur_df = pd.DataFrame(frac_dict)
             df_list.append(cur_df)
+        df_list = pd.concat(df_list)
+
+        return df_list
+
+    def get_domain_sizes_at_radii(self, im_sets_to_use, min_r = 2.5, max_r = 10, num_bins = 300):
+
+        r_scaled = np.linspace(min_r, max_r, num_bins)
+        df_list = []
+        for i in im_sets_to_use:
+            cur_im_set = self.image_set_list[i]
+
+            cur_scaling = cur_im_set.get_scaling()
+            r_index_count = 0
+            for cur_r in r_scaled:
+                r_pixel = np.around(cur_r / cur_scaling)
+                domains_df = cur_im_set.get_domain_sizes_scaled_at_radius(r_pixel)
+
+                domains_df['imset_index'] = i
+                domains_df['radius_scaled'] = cur_r
+                domains_df['r_index_count'] = r_index_count
+                r_index_count += 1
+
+                df_list.append(domains_df)
         df_list = pd.concat(df_list)
 
         return df_list
@@ -884,8 +907,6 @@ class Image_Set(object):
             mask_df[string] = mask.ravel()
             count += 1
 
-        frac_list = []
-
         masks_binned, theta = self.bin_theta_at_r_df(mask_df, pixel_radius)
 
         # Determine the length of the domains in each channel...
@@ -917,8 +938,6 @@ class Image_Set(object):
 
         combined_domain_df = pd.concat(domain_df_list)
         return combined_domain_df
-
-
 
     def get_biorep_name(self):
         """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
