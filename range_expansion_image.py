@@ -19,7 +19,7 @@ import gc
 
 def contiguous_regions(condition):
     """Finds contiguous True regions of the boolean array "condition". Returns
-    three 1d arrays:  start indicies, stop indicies and lengths of contigous regions
+    three 1d arrays:  start indicies, stop indicies and lengths of contigous regions.
     """
 
     d = np.diff(condition)
@@ -795,7 +795,6 @@ class Image_Set(object):
     ####### Main Functions #######
 
     def get_average_fractions_black_corrected(self, r_steps):
-        # TODO: I am forgetting to expand all of the requisite regions
         # Get the fractions in steps of 1.5pixels
 
         cur_masks = self.fluorescent_mask
@@ -873,6 +872,53 @@ class Image_Set(object):
             frac_list.append(fractions)
 
         return np.array(frac_list)
+
+    def get_domain_sizes_scaled_at_radius(self, pixel_radius):
+        cur_masks = self.fluorescent_mask
+        num_channels = cur_masks.shape[0]
+
+        mask_df =  self.image_coordinate_df
+        count = 0
+        for mask in cur_masks:
+            string = 'ch' + str(count)
+            mask_df[string] = mask.ravel()
+            count += 1
+
+        frac_list = []
+
+        masks_binned, theta = self.bin_theta_at_r_df(mask_df, pixel_radius)
+
+        # Determine the length of the domains in each channel...
+        domains = masks_binned.loc[:, 'ch0':'ch' + str(num_channels - 1)].values
+        domains = domains > 0
+
+        domain_dict = {}
+
+        delta_theta = theta[1] - theta[0]
+
+        domain_df_list = []
+
+        for ch_num in range(domains.shape[1]):
+            cur_domain = domains[:, ch_num]
+            starts, stops, lengths = contiguous_regions(cur_domain)
+
+            physical_radius = pixel_radius * self.get_scaling()
+
+            lengths_scaled = physical_radius * delta_theta * lengths
+
+            domain_dict['channel'] = ch_num
+            domain_dict['lengths_scaled'] = lengths_scaled
+            domain_dict['angular_width'] = 2*np.pi*(lengths / float(cur_domain.shape[0]))
+            domain_dict['pixel_radius'] = pixel_radius
+
+            domain_df = pd.DataFrame(domain_dict)
+
+            domain_df_list.append(domain_df)
+
+        combined_domain_df = pd.concat(domain_df_list)
+        return combined_domain_df
+
+
 
     def get_biorep_name(self):
         """Assumes that in the name, bioSTUFF, STUFF is the replicate name."""
