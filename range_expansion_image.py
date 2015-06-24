@@ -233,7 +233,9 @@ class Range_Expansion_Experiment(object):
         mean_bins['cumsum'] = np.cumsum(mean_bins['count'])
 
         # Add radius_midbin to each...
-        mean_bins['radius_scaled_midbin'] = (bins[:-1] + bins[1:])/2.
+        mean_bins[quantity + '_midbin'] = (bins[:-1] + bins[1:])/2.
+
+        # Drop everything else so you don't get confused
 
         return mean_bins
 
@@ -375,9 +377,12 @@ class Range_Expansion_Experiment(object):
 
         return df_list
 
-    def get_domain_sizes_at_radii(self, im_sets_to_use, min_r = 2.5, max_r = 10, num_bins = 300):
+    def get_domain_sizes_at_radii(self, im_sets_to_use, min_r = 2.5, max_r = 10, num_bins = 300, input_bins=None):
 
-        r_scaled = np.linspace(min_r, max_r, num_bins)
+        if input_bins is None:
+            r_scaled = np.linspace(min_r, max_r, num_bins)
+        else:
+            r_scaled = input_bins
         df_list = []
         for i in im_sets_to_use:
             cur_im_set = self.image_set_list[i]
