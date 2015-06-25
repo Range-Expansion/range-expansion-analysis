@@ -174,17 +174,23 @@ class Publication_Experiment(object):
     #### Summary Method ####
 
     def write_all_to_disk(self, num_colors):
+        print 'Calculating & writing heterozygosity'
         self.write_nonlocal_quantity_to_disk('hetero')
 
         for i in range(num_colors):
             for j in range(i, num_colors):
                 if i != j:
+                    print 'Calculating & writing F' + str(i) + str(j) + '_sym'
                     self.write_nonlocal_quantity_to_disk('Fij_sym', i=i, j=j)
                 elif i == j:
+                    print 'Calculating & writing F' +str(i) + str(j)
                     self.write_nonlocal_quantity_to_disk('Fij', i=i, j=j)
 
+        print 'Calculating & writing annihilations & coalescences'
         self.write_annih_coal_to_disk()
+        print 'Calculating & writing trajectories'
         self.write_fraction_trajectories_to_disk()
+        print 'Calculating & writing domains'
         self.write_domain_sizes_to_disk()
 
 
