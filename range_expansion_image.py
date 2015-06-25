@@ -137,7 +137,7 @@ class Publication_Experiment(object):
             self.experiment.image_set_list[q].finish_setup()
 
         combined_annih, combined_coal = self.experiment.get_cumulative_average_annih_coal(self.complete_annih,
-                                                                                          min_radius_scaled = self.annih_min_radius,
+                                                                                          min_radius_scaled=self.annih_min_radius,
                                                                                           **kwargs)
         with open(self.experiment.title + '_annih.pkl', 'wb') as fi:
             pkl.dump(combined_annih, fi)
@@ -183,7 +183,7 @@ class Publication_Experiment(object):
                 elif i == j:
                     self.write_nonlocal_quantity_to_disk('Fij', i=i, j=j)
 
-        self.write_annih_coal_to_disk(min_radius_scaled=self.annih_min_radius)
+        self.write_annih_coal_to_disk()
         self.write_fraction_trajectories_to_disk()
         self.write_domain_sizes_to_disk()
 
