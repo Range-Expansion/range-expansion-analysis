@@ -44,7 +44,7 @@ def contiguous_regions(condition):
 class Publication_Experiment(object):
     """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
-    def __init__(self, experiment_path, cache=False, title = None):
+    def __init__(self, experiment_path, cache=False, title = None, **kwargs):
         """Only one experiment per class now."""
         self.experiment_path = experiment_path
         self.title = title
@@ -59,7 +59,7 @@ class Publication_Experiment(object):
 
         # Initialize the experiment
         self.experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
-                                            bigger_than_image=False)
+                                            bigger_than_image=False, **kwargs)
         self.complete_masks = self.experiment.get_complete_im_sets('masks_folder')
         self.complete_annih = self.experiment.get_complete_im_sets('annihilation_folder')
 
@@ -549,7 +549,7 @@ class Range_Expansion_Experiment(object):
 
 class Image_Set(object):
     '''Homeland radius is used to get the center of the expansion now.'''
-    def __init__(self, image_name, path_dict, cache=True, bigger_than_image=True, black_strain=False,
+    def __init__(self, image_name, path_dict, cache=True, bigger_than_image=False, black_strain=False,
                  set_black_channel=None):
         '''If cache is passed, a ton of memory is used but things will go MUCH faster.'''
         self.image_name = image_name
