@@ -44,7 +44,7 @@ def contiguous_regions(condition):
 class Publication_Experiment(object):
     """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
-    def __init__(self, experiment_path, cache=False, title = None, **kwargs):
+    def __init__(self, experiment_path, cache=False, title = None, annih_min_radius=3.5, **kwargs):
         """Only one experiment per class now."""
         self.experiment_path = experiment_path
         self.title = title
@@ -62,6 +62,8 @@ class Publication_Experiment(object):
                                             bigger_than_image=False, **kwargs)
         self.complete_masks = self.experiment.get_complete_im_sets('masks_folder')
         self.complete_annih = self.experiment.get_complete_im_sets('annihilation_folder')
+
+        self.annih_min_radius = annih_min_radius
 
     def write_nonlocal_quantity_to_disk(self, quantity_str, i= None, j=None):
         # If caching, initialize the experiment once and go from there.
@@ -134,7 +136,9 @@ class Publication_Experiment(object):
         for q in self.complete_annih:
             self.experiment.image_set_list[q].finish_setup()
 
-        combined_annih, combined_coal = self.experiment.get_cumulative_average_annih_coal(self.complete_annih, **kwargs)
+        combined_annih, combined_coal = self.experiment.get_cumulative_average_annih_coal(self.complete_annih,
+                                                                                          min_radius_scaled = self.annih_min_radius,
+                                                                                          **kwargs)
         with open(self.experiment.title + '_annih.pkl', 'wb') as fi:
             pkl.dump(combined_annih, fi)
         with open(self.experiment.title + '_coal.pkl', 'wb') as fi:
@@ -166,6 +170,23 @@ class Publication_Experiment(object):
 
         with open(folder_name + '/domain_sizes.pkl', 'wb') as fi:
             pkl.dump(domain_sizes, fi)
+
+    #### Summary Method ####
+
+    def write_all_to_disk(self, num_colors):
+        self.write_nonlocal_quantity_to_disk('hetero')
+
+        for i in range(num_colors):
+            for j in range(i, num_colors):
+                if i != j:
+                    self.write_nonlocal_quantity_to_disk('Fij_sym', i=i, j=j)
+                elif i == j:
+                    self.write_nonlocal_quantity_to_disk('Fij', i=i, j=j)
+
+        self.write_annih_coal_to_disk(min_radius_scaled=self.annih_min_radius)
+        self.write_fraction_trajectories_to_disk()
+        self.write_domain_sizes_to_disk()
+
 
     #### Plotting Methods ####
 
