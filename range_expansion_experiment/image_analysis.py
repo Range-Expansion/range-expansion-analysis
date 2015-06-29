@@ -44,7 +44,7 @@ def contiguous_regions(condition):
 class Publication_Experiment(object):
     """Choose whether you have enough memory to store images in RAM or not. If you do, things go much faster."""
 
-    def __init__(self, experiment_path, cache=False, title = None, annih_min_radius=3.5, **kwargs):
+    def __init__(self, experiment_path, cache=False, title = None, annih_min_radius=3.5, data_export_directory='./', **kwargs):
         """Only one experiment per class now."""
         self.experiment_path = experiment_path
         self.title = title
@@ -65,6 +65,8 @@ class Publication_Experiment(object):
 
         self.annih_min_radius = annih_min_radius
 
+        self.data_export_directory = data_export_directory
+
     def write_nonlocal_quantity_to_disk(self, quantity_str, i= None, j=None):
         # If caching, initialize the experiment once and go from there.
 
@@ -76,9 +78,9 @@ class Publication_Experiment(object):
             print r
 
             if (i is None) and (j is None):
-                folder_name = self.experiment.title + '_' + quantity_str
+                folder_name = self.data_export_directory + self.experiment.title + '_' + quantity_str
             else:
-                folder_name = self.experiment.title + '_' + quantity_str + '_' + str(i) + '_' + str(j)
+                folder_name = self.data_export_directory +  self.experiment.title + '_' + quantity_str + '_' + str(i) + '_' + str(j)
 
             if not os.path.exists(folder_name):
                 os.makedirs(folder_name)
@@ -139,7 +141,7 @@ class Publication_Experiment(object):
         combined_annih, combined_coal = self.experiment.get_cumulative_average_annih_coal(self.complete_annih,
                                                                                           min_radius_scaled=self.annih_min_radius,
                                                                                           **kwargs)
-        with open(self.experiment.title + '_annih.pkl', 'wb') as fi:
+        with open(self.data_export_directory + self.experiment.title + '_annih.pkl', 'wb') as fi:
             pkl.dump(combined_annih, fi)
         with open(self.experiment.title + '_coal.pkl', 'wb') as fi:
             pkl.dump(combined_coal, fi)
@@ -152,7 +154,7 @@ class Publication_Experiment(object):
         fracs = fracs.loc[fracs['radius_midbin_scaled'] < max_radius, :]
 
         # Write the information to disk
-        folder_name = self.experiment.title + '_fractions'
+        folder_name = self.data_export_directory + self.experiment.title + '_fractions'
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
@@ -164,7 +166,7 @@ class Publication_Experiment(object):
         domain_sizes['radius_scaled_used'] = self.hetero_r_list
 
         # Write the information to disk
-        folder_name = self.experiment.title + '_domain_sizes'
+        folder_name = self.data_export_directory + self.experiment.title + '_domain_sizes'
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
@@ -193,6 +195,52 @@ class Publication_Experiment(object):
         print 'Calculating & writing domains'
         self.write_domain_sizes_to_disk()
 
+    #### Importing Methods #####
+    def import_files_in_folder(self, quantity, i=None, j=None):
+        folder_name = self.data_export_directory + self.title + '_' + quantity
+        if (i is not None) and (j is not None):
+            folder_name += '_' + str(i) + '_' + str(j)
+        folder_name += '/'
+
+        data_list = []
+
+        files_to_import = glob.glob(folder_name + '*.pkl')
+        for file_path in files_to_import:
+            with open(file_path, 'rb') as fi:
+                data_list.append(pkl.load(fi))
+
+        # Sort files by radius
+
+        radii = [z['r'] for z in data_list]
+        order = np.argsort(radii)
+        data_list = [data_list[z] for z in order]
+
+        return data_list
+
+    def get_Fij_at_each_r(self, num_colors):
+        Fij_dict_list = {}
+        for i in range(num_colors):
+            for j in range(i, num_colors):
+                if i != j:
+                    Fij_dict_list[i, j] = self.import_files_in_folder('Fij_sym', i=i, j=j)
+                else:
+                    Fij_dict_list[i, j] = self.import_files_in_folder('Fij', i=i, j=j)
+
+        # We now want to organize each of these by radius. UGH.
+        # Actually, each thing is sorted by radius. Sooooooo, assuming we do the same
+        # radii for each, this isn't too bad.
+
+        num_radii = len(Fij_dict_list[0, 0])
+
+        Fij_at_each_r = []
+        for r_index in range(num_radii):
+            current_radius_Fij = {}
+            for i in range(num_colors):
+                for j in range(i, num_colors):
+                    current_radius_Fij[i, j] = Fij_dict_list[i, j][r_index]
+            Fij_at_each_r.append(current_radius_Fij)
+
+        return Fij_at_each_r
 
     #### Plotting Methods ####
 

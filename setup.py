@@ -1,9 +1,9 @@
 from distutils.core import setup
 
 setup(
-    name='range_expansion_analysis',
-    version='0.1',
-    packages=[''],
+    name='Range Expansion Experimental Analysis',
+    version='0.2',
+    packages=['range_expansion_experiment'],
     url='',
     license='',
     author='Bryan Weinstein',
