@@ -8,5 +8,6 @@ setup(
     license='',
     author='Bryan Weinstein',
     author_email='bweinstein@seas.harvard.edu',
-    description='Used to analyze range expansion experiments'
+    description='Used to analyze range expansion experiments',
+    requires=['numpy', 'matplotlib', 'tifffile', 'pandas', 'scipy', 'seaborn']
 )
