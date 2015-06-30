@@ -134,6 +134,82 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     plt.hold(False)
 
-    #plt.savefig('colored_trajectories_radius_labeled.png', dpi=200, bbox_inches='tight')
+def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_radius=10, num_bins=150):
 
-    #Can we make a heatmap? That would be cool too
+    sns.set_style('white')
+
+    new_r_bins = np.linspace(min_radius, max_radius, num_bins)
+
+    plt.hold(True)
+
+    input_fracs = input_fracs.groupby('im_set')
+
+    num_imsets = len(input_fracs)
+    new_cmap = sns.color_palette('husl', n_colors=num_imsets)
+
+    count = 0
+    for im_set, data in input_fracs:
+        data = data.loc[data['radius_midbin_scaled'] >= min_radius, :]
+        data = data.loc[data['radius_midbin_scaled'] <= max_radius, :]
+
+        # Rebin
+        cut = pd.cut(data['radius_midbin_scaled'], new_r_bins)
+        data = data.groupby(cut).agg('mean')
+
+        plt.plot(data['ch1'], data['radius_midbin_scaled'],
+                color=new_cmap[count], linestyle='-')
+        count += 1
+    plt.hold(False)
+    plt.xlim(0, 1)
+    plt.ylim(max_radius, min_radius) # Flips axis in y
+    sns.despine(left=False, bottom=True, top=False, right=False)
+
+    plt.xlabel('Fraction')
+    plt.gca().xaxis.set_label_position('top')
+
+    plt.ylabel('Radius (mm)')
+
+    plt.setp(plt.gca().get_xticklabels(), visible=False)
+
+    # Now label eCFP & eYFP
+    cur_ax = plt.gca()
+
+    cur_ax.annotate(labels[0], xy=(0, 1), xytext=(-10, 25), ha='left', va='top',
+                   xycoords='axes fraction', textcoords='offset points',
+                   fontsize=20, color=colors[0])
+    cur_ax.annotate(labels[1], xy=(1, 1), xytext=(-20, 25), ha='left', va='top',
+                   xycoords='axes fraction', textcoords='offset points',
+                   fontsize=20, color=colors[1])
+
+    # Adding an arrow to the bottom axis...painful
+    dps = plt.gcf().dpi_scale_trans.inverted()
+    bbox = plt.gca().get_window_extent().transformed(dps)
+    width, height = bbox.width, bbox.height
+
+    ymin=min_radius
+    ymax=max_radius
+    xmax=1
+    xmin=0
+
+    # manual arrowhead width and length
+    hw = 1./20.*(ymax-ymin)
+    hl = 1./20.*(xmax-xmin)
+    lw = 1. # axis line width
+    ohg = 0.3 # arrow overhang
+
+    # compute matching arrowhead length and width
+    yhw = hw/(ymax-ymin)*(xmax-xmin)* height/width
+    yhl = hl/(xmax-xmin)*(ymax-ymin)* width/height
+
+    cur_ax.spines['left'].set_color('black')
+    cur_ax.spines['top'].set_color('black')
+
+    cur_ax.arrow(0, ymin, 0., ymax-ymin, fc='k', ec='k', lw = lw,
+             head_width=yhw, head_length=yhl, overhang = ohg,
+             length_includes_head= True, clip_on = False, color='black')
+
+    cur_ax.arrow(.8, ymax, 1, ymax, fc='k', ec='k', lw = lw,
+             head_width=yhw, head_length=yhl, overhang = ohg,
+             length_includes_head= True, clip_on = False, color='black')
+
+    return cur_ax
