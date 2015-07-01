@@ -287,15 +287,25 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
 
     return cur_ax
 
-def get_cdf_quantity_domains(domains, quantity, num_channels, cdf_bins):
+def get_cdf_quantity_domains(domains, quantity, num_channels, cdf_bins, filter_value=None):
     radius_bins = domains['radius_scaled_used']
+
+    if filter_value is None:
+        if quantity == 'lengths_scaled':
+            filter_value = 0.3 # This is about the overlap region size
+        elif quantity == 'angular_width':
+            filter_value = 1. * (np.pi/180.)  # in pixels; 1 degree
 
     df_dict = {}
     for ch in range(num_channels):
         for radius_index in range(len(radius_bins)):
             cdf_list = []
             cur_data = domains[ch, radius_index]
-            for imset_index, image_df in cur_data.groupby('r_index_count'):
+            for imset_index, image_df in cur_data.groupby('imset_index'):
+                if quantity == 'lengths_scaled':
+                    image_df = image_df.loc[image_df['lengths_scaled'] >= filter_value, :]
+                elif quantity == 'angular_width':
+                    image_df = image_df.loc[image_df['angular_width'] >= filter_value, :]
                 cumulative_counts = rei.Range_Expansion_Experiment.get_cumsum_quantity(image_df, cdf_bins,
                                                                                        quantity=quantity)
                 cumulative_counts['imset_index'] = imset_index
