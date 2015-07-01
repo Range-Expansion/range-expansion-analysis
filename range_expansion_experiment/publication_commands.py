@@ -294,7 +294,7 @@ def get_cdf_quantity_domains(domains, quantity, num_channels, cdf_bins, filter_v
         if quantity == 'lengths_scaled':
             filter_value = 0.3 # This is about the overlap region size
         elif quantity == 'angular_width':
-            filter_value = 1. * (np.pi/180.)  # in pixels; 1 degree
+            filter_value = 0.5 * (np.pi/180.)  # in pixels; 1 degree
 
     df_dict = {}
     for ch in range(num_channels):
@@ -315,4 +315,33 @@ def get_cdf_quantity_domains(domains, quantity, num_channels, cdf_bins, filter_v
             df_dict[ch, radius_index] =  cdf_df
 
     df_dict['radius_scaled_used'] = radius_bins
+    return df_dict
+
+def get_mean_domain_quantity(domains, quantity, num_channels, filter_value=None):
+    radius_bins = domains['radius_scaled_used']
+
+    if filter_value is None:
+        if quantity == 'lengths_scaled':
+            filter_value = 0.3 # This is about the overlap region size
+        elif quantity == 'angular_width':
+            filter_value = 1. * (np.pi/180.)  # in pixels; 1 degree
+
+    df_dict = {}
+    for ch in range(num_channels):
+        r_list = []
+        for radius_index in range(len(radius_bins)):
+            mean_list = []
+            cur_data = domains[ch, radius_index]
+            for imset_index, image_df in cur_data.groupby('imset_index'):
+                if quantity == 'lengths_scaled':
+                    image_df = image_df.loc[image_df['lengths_scaled'] >= filter_value, :]
+                elif quantity == 'angular_width':
+                    image_df = image_df.loc[image_df['angular_width'] >= filter_value, :]
+                mean_quantity = image_df[quantity].mean()
+                mean_list.append(mean_quantity)
+            mean_df = pd.DataFrame({quantity + '_mean' : mean_list})
+            mean_df['radius_scaled'] = radius_bins[radius_index]
+            r_list.append(mean_df)
+        r_df = pd.concat(r_list)
+        df_dict[ch] = r_df
     return df_dict
