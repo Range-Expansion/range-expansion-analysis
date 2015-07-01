@@ -203,12 +203,13 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
 
     cur_ax.spines['left'].set_color('black')
     cur_ax.spines['top'].set_color('black')
+    cur_ax.spines['right'].set_color('black')
 
     cur_ax.arrow(0, ymin, 0., ymax-ymin, fc='k', ec='k', lw = lw,
              head_width=yhw, head_length=yhl, overhang = ohg,
              length_includes_head= True, clip_on = False, color='black')
 
-    cur_ax.arrow(.8, ymax, 1, ymax, fc='k', ec='k', lw = lw,
+    cur_ax.arrow(1, ymin, 0, ymax-ymin, fc='k', ec='k', lw = lw,
              head_width=yhw, head_length=yhl, overhang = ohg,
              length_includes_head= True, clip_on = False, color='black')
 
