@@ -52,6 +52,7 @@ class Publication_Experiment(object):
 
         self.hetero_r_list = [2.5, 3, 3.5, 4, 5, 6, 8, 10] # Radii used to compare heterozygosity
         self.num_theta_bins_list = [500, 600, 700, 800, 1000, 1000, 1500, 1500] # Bins at each radius; larger radii allow more bins
+        self.domain_r_bins = np.arange(3.5, 10.1, .1)
 
         self.experiment = None # Used to point to a current experiment
         self.complete_masks = None
@@ -163,7 +164,7 @@ class Publication_Experiment(object):
 
     def write_domain_sizes_to_disk(self, input_bins=None):
         if input_bins is None:
-            input_bins = self.hetero_r_list
+            input_bins = self.domain_r_bins
         domain_sizes = self.experiment.get_domain_sizes_at_radii(self.complete_masks, input_bins)
 
         # Write the information to disk
