@@ -515,19 +515,8 @@ class Range_Expansion_Experiment(object):
 
         data_dict = {}
 
-        #length_bins = np.linspace(0, 30, 800)
-
         for cur_channel, channel_data in domain_sizes.groupby('channel'):
             for cur_rindex, data_at_r in channel_data.groupby('r_index_count'):
-                # We now get the average CDF per image...ugh.
-                #cdf_list = []
-                #for imset_index, image_df in data_at_r.groupby('imset_index'):
-                #    cumulative_counts = self.get_cumsum_quantity(image_df, length_bins, quantity='lengths_scaled')
-                #    cumulative_counts['imset_index'] = imset_index
-                #    cumulative_counts['ecdf'] = cumulative_counts['cumsum'] / cumulative_counts['cumsum'].max()
-                #    cdf_list.append(cumulative_counts)
-                    #print image_df['lengths_scaled']
-
                 data_dict[cur_channel, cur_rindex] = data_at_r
         data_dict['radius_scaled_used'] = r_scaled_bins
         return data_dict
