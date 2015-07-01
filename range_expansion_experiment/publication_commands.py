@@ -114,8 +114,9 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     new_ax = plt.gca()
 
+    # Make a colorbar
     ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
-                                 numticks=6)
+                                 numticks=6, title='Radius (mm)')
 
     ### Create annotations specifying the edges ####
 
@@ -134,11 +135,73 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     plt.hold(False)
 
-def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_radius=10, num_bins=150):
+def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=100, offset_list=None):
+    if offset_list is None:
+        offset_list = [[-15, -7], [-30, 20], [-30, -7]]
+    new_r_bins = np.linspace(r_min, r_max, num_bins)
+
+    fig, ax = ter.figure()
+    fig.set_size_inches(16, 10)
+
+    plt.hold(True)
+
+    ax.boundary(color='black')
+    ax.gridlines(color='black', multiple=0.1)
+
+    cut = pd.cut(input_fracs['radius_midbin_scaled'], new_r_bins)
+    cur_data = input_fracs.groupby(cut).agg('mean')
+
+    fracs = cur_data.loc[:, 'ch0':'ch2'].values
+
+    n_colors = fracs.shape[0]
+    cmap = sns.cubehelix_palette(as_cmap=True, n_colors=n_colors, light=0.7, dark=.05)
+
+    ax.plot_colored_trajectory(fracs, cmap, alpha=1)
+
+    start_label = 'Start'
+    finish_label = 'Finish'
+    ax.scatter([fracs[0, :]], s=20, color='red', zorder=99999, marker='o', label=start_label)
+    ax.scatter([fracs[-1, :]], s=20, color='black', zorder=99999, marker='o', label=finish_label)
+
+    plt.gca().get_xaxis().set_visible(False)
+    plt.gca().get_yaxis().set_visible(False)
+
+    plt.xlim(-.1, 1.1)
+    plt.ylim(-.07, .93)
+
+    new_ax = plt.gca()
+
+    # Make a colorbar
+    ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
+                                 numticks=6, title='Radius (mm)')
+
+    ### Create annotations specifying the edges ####
+
+    positions_list = [ter.project_point([1, 0, 0]), ter.project_point([0, 1, 0]),
+                 ter.project_point([0, 0, 1])]
+
+    for pos, label, offset, color in zip(positions_list, label_list, offset_list, color_list):
+        new_ax.annotate(label, xy=pos, xytext=offset, ha='left',
+                        va='top', xycoords='data',
+                        textcoords='offset points',
+                        fontsize=20, color=color)
+
+    plt.gca().set_aspect('equal')
+
+    plt.legend(loc='best')
+
+    plt.hold(False)
+
+def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_radius=10, num_bins=150,
+                            plot_mean=True):
 
     sns.set_style('white')
 
     new_r_bins = np.linspace(min_radius, max_radius, num_bins)
+
+    # Average trajectory
+    cut = pd.cut(input_fracs['radius_midbin_scaled'], new_r_bins)
+    mean_fracs= input_fracs.groupby(cut).agg('mean')
 
     plt.hold(True)
 
@@ -159,6 +222,14 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
         plt.plot(data['ch1'], data['radius_midbin_scaled'],
                 color=new_cmap[count], linestyle='-')
         count += 1
+
+    if plot_mean:
+        mean_fracs = mean_fracs.loc[mean_fracs['radius_midbin_scaled'] >= min_radius, :]
+        mean_fracs = mean_fracs.loc[mean_fracs['radius_midbin_scaled'] <= max_radius, :]
+        plt.plot(mean_fracs['ch1'], mean_fracs['radius_midbin_scaled'],
+                color='black', linestyle='--', label='Mean Trajectory')
+        plt.legend(loc='best')
+
     plt.hold(False)
     plt.xlim(0, 1)
     plt.ylim(max_radius, min_radius) # Flips axis in y
