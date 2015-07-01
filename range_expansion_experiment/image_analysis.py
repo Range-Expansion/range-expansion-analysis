@@ -161,9 +161,10 @@ class Publication_Experiment(object):
         with open(folder_name + '/fractions.pkl', 'wb') as fi:
             pkl.dump(fracs, fi)
 
-    def write_domain_sizes_to_disk(self):
-        domain_sizes = self.experiment.get_domain_sizes_at_radii(self.complete_masks, input_bins=self.hetero_r_list)
-        domain_sizes['radius_scaled_used'] = self.hetero_r_list
+    def write_domain_sizes_to_disk(self, input_bins=None):
+        if input_bins is None:
+            input_bins = self.hetero_r_list
+        domain_sizes = self.experiment.get_domain_sizes_at_radii(self.complete_masks, input_bins)
 
         # Write the information to disk
         folder_name = self.data_export_directory + self.experiment.title + '_domain_sizes'
@@ -332,7 +333,12 @@ class Range_Expansion_Experiment(object):
     @staticmethod
     def get_cumsum_quantity(df, bins, quantity='radius_scaled'):
         """Calculates cumulative sums for annihilations/coalescences along bins which can later be averaged."""
+
+        # Drop all unecessary columns...or this becomes extremely confusing
+        df = df[quantity]
+
         df['count'] = 1
+
         cut = pd.cut(df[quantity], bins)
         gb = df.groupby(cut)
         mean_bins = gb.agg('sum')
@@ -341,8 +347,6 @@ class Range_Expansion_Experiment(object):
 
         # Add radius_midbin to each...
         mean_bins[quantity + '_midbin'] = (bins[:-1] + bins[1:])/2.
-
-        # Drop everything else so you don't get confused
 
         return mean_bins
 
@@ -484,19 +488,16 @@ class Range_Expansion_Experiment(object):
 
         return df_list
 
-    def get_domain_sizes_at_radii(self, im_sets_to_use, min_r = 2.5, max_r = 10, num_bins = 300, input_bins=None):
+    def get_domain_sizes_at_radii(self, im_sets_to_use, r_scaled_bins):
         """Returns a dictionary with keys dict[channel_num, radius_index (i.e. 12th bin in the radius index)"""
-        if input_bins is None:
-            r_scaled = np.linspace(min_r, max_r, num_bins)
-        else:
-            r_scaled = input_bins
+
         df_list = []
         for i in im_sets_to_use:
             cur_im_set = self.image_set_list[i]
 
             cur_scaling = cur_im_set.get_scaling()
             r_index_count = 0
-            for cur_r in r_scaled:
+            for cur_r in r_scaled_bins:
                 r_pixel = np.around(cur_r / cur_scaling)
                 domains_df = cur_im_set.get_domain_sizes_scaled_at_radius(r_pixel)
 
@@ -512,21 +513,21 @@ class Range_Expansion_Experiment(object):
 
         data_dict = {}
 
-        length_bins = np.linspace(0, 30, 800)
+        #length_bins = np.linspace(0, 30, 800)
 
         for cur_channel, channel_data in domain_sizes.groupby('channel'):
             for cur_rindex, data_at_r in channel_data.groupby('r_index_count'):
                 # We now get the average CDF per image...ugh.
-                cdf_list = []
-                for imset_index, image_df in data_at_r.groupby('imset_index'):
-                    cumulative_counts = self.get_cumsum_quantity(image_df, length_bins, quantity='lengths_scaled')
-                    cumulative_counts['imset_index'] = imset_index
-                    cumulative_counts['ecdf'] = cumulative_counts['cumsum'] / cumulative_counts['cumsum'].max()
-                    cdf_list.append(cumulative_counts)
+                #cdf_list = []
+                #for imset_index, image_df in data_at_r.groupby('imset_index'):
+                #    cumulative_counts = self.get_cumsum_quantity(image_df, length_bins, quantity='lengths_scaled')
+                #    cumulative_counts['imset_index'] = imset_index
+                #    cumulative_counts['ecdf'] = cumulative_counts['cumsum'] / cumulative_counts['cumsum'].max()
+                #    cdf_list.append(cumulative_counts)
                     #print image_df['lengths_scaled']
 
-                data_dict[cur_channel, cur_rindex] = pd.concat(cdf_list)
-
+                data_dict[cur_channel, cur_rindex] = data_at_r
+        data_dict['radius_scaled_used'] = r_scaled_bins
         return data_dict
 
     def get_nonlocal_quantity_averaged(self, nonlocal_quantity, im_sets_to_use, r_scaled, num_theta_bins=250, delta_x=1.5,
