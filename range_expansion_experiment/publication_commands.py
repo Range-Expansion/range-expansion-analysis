@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import ternary as ter
 import pandas as pd
+import image_analysis as rei
 
 def import_files_in_folder(title, quantity, i=None, j=None, base_directory='./'):
     folder_name = base_directory + title + '_' + quantity
@@ -285,3 +286,23 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
              length_includes_head= True, clip_on = False, color='black')
 
     return cur_ax
+
+def get_cdf_quantity_domains(domains, quantity, num_channels, cdf_bins):
+    radius_bins = domains['radius_scaled_used']
+
+    df_dict = {}
+    for ch in range(num_channels):
+        for radius_index in range(len(radius_bins)):
+            cdf_list = []
+            cur_data = domains[ch, radius_index]
+            for imset_index, image_df in cur_data.groupby('r_index_count'):
+                cumulative_counts = rei.Range_Expansion_Experiment.get_cumsum_quantity(image_df, cdf_bins,
+                                                                                       quantity=quantity)
+                cumulative_counts['imset_index'] = imset_index
+                cumulative_counts['ecdf'] = cumulative_counts['cumsum'] / cumulative_counts['cumsum'].max()
+                cdf_list.append(cumulative_counts)
+            cdf_df = pd.concat(cdf_list)
+            df_dict[ch, radius_index] =  cdf_df
+
+    df_dict['radius_scaled_used'] = radius_bins
+    return df_dict

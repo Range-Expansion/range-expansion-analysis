@@ -329,15 +329,13 @@ class Range_Expansion_Experiment(object):
         frac_concat = pd.concat(frac_list)
         return frac_concat
 
-
     @staticmethod
     def get_cumsum_quantity(df, bins, quantity='radius_scaled'):
         """Calculates cumulative sums for annihilations/coalescences along bins which can later be averaged."""
 
         # Drop all unecessary columns...or this becomes extremely confusing
-        df = df[quantity]
-
         df['count'] = 1
+        df = df.loc[:, [quantity, 'count']]
 
         cut = pd.cut(df[quantity], bins)
         gb = df.groupby(cut)
@@ -347,6 +345,10 @@ class Range_Expansion_Experiment(object):
 
         # Add radius_midbin to each...
         mean_bins[quantity + '_midbin'] = (bins[:-1] + bins[1:])/2.
+
+        # Drop the quantity, in this case lengths_scaled, to avoid confusion. You just
+        # need the midbin...
+        mean_bins = mean_bins.drop(quantity, axis=1)
 
         return mean_bins
 
