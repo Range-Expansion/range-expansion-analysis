@@ -345,3 +345,26 @@ def get_mean_domain_quantity(domains, quantity, num_channels, filter_value=None)
         r_df = pd.concat(r_list)
         df_dict[ch] = r_df
     return df_dict
+
+def get_number_of_domains(domains, num_channels, filter_value=None):
+    radius_bins = domains['radius_scaled_used']
+
+    if filter_value is None:
+        filter_value = 0.3 # This is about the overlap region size
+
+    df_dict = {}
+    for ch in range(num_channels):
+        r_list = []
+        for radius_index in range(len(radius_bins)):
+            num_domain_list = []
+            cur_data = domains[ch, radius_index]
+            for imset_index, image_df in cur_data.groupby('imset_index'):
+                image_df = image_df.loc[image_df['lengths_scaled'] >= filter_value, :]
+                num_domains = image_df.shape[0]
+                num_domain_list.append(num_domains)
+            mean_df = pd.DataFrame({'num_domains' : num_domain_list})
+            mean_df['radius_scaled'] = radius_bins[radius_index]
+            r_list.append(mean_df)
+        r_df = pd.concat(r_list)
+        df_dict[ch] = r_df
+    return df_dict
