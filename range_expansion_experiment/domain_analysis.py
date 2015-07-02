@@ -237,7 +237,7 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list):
         plt.xlabel('Domain Length (mm)')
 
     angular_bins = np.linspace(0, 2*np.pi, 800)
-    cdf_angular_dict = get_cdf_quantity_domains(domains, 'angular_width', 2, angular_bins)
+    cdf_angular_dict = get_cdf_quantity_domains(domains, 'angular_width', num_colors, angular_bins)
     for ch in range(num_colors):
         plt.figure()
         plot_domain_cdf(cdf_angular_dict, ch, 'angular_width', plot_every=0.5)
