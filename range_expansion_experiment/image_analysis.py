@@ -827,8 +827,10 @@ class Image_Set(object):
                 indices[self.set_black_channel] = False
                 temp_mask = temp_mask[indices, :, :]
             if self.black_strain or self.set_black_channel is not None:
-                # Create a black color...the absence of the other two
-                black_channel = ~np.any(temp_mask, axis=0)
+                # Create a black color...the absence of the other two, plus an erosion.
+                other_channels = np.any(temp_mask, axis=0)
+                selem = ski.morphology.disk(10)
+                black_channel = ~ski.morphology.binary_erosion(other_channels, selem=selem)
 
                 insert_location = None
                 if self.set_black_channel is not None:
