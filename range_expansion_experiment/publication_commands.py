@@ -8,6 +8,7 @@ import seaborn as sns
 import ternary as ter
 import pandas as pd
 import image_analysis as rei
+import scipy as sp
 
 def import_files_in_folder(title, quantity, i=None, j=None, base_directory='./'):
     folder_name = base_directory + title + '_' + quantity
@@ -203,6 +204,7 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
     # Average trajectory
     cut = pd.cut(input_fracs['radius_midbin_scaled'], new_r_bins)
     mean_fracs= input_fracs.groupby(cut).agg('mean')
+    err_fracs = input_fracs.groupby(cut).agg(sp.stats.sem)
 
     plt.hold(True)
 
@@ -230,6 +232,12 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
         plt.plot(mean_fracs['ch1'], mean_fracs['radius_midbin_scaled'],
                 color='black', linestyle='--', label='Mean Trajectory')
         plt.legend(loc='best')
+
+        # Plot the error
+        x = mean_fracs['ch1']
+        xerr = err_fracs['ch1']
+        y = mean_fracs['radius_midbin_scaled']
+        plt.fill_betweenx(y, x - xerr, x + xerr, alpha=0.2, color='black')
 
     plt.hold(False)
     plt.xlim(0, 1)

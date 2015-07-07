@@ -9,6 +9,7 @@ import ternary as ter
 import pandas as pd
 import image_analysis as rei
 import os
+import scipy as sp
 
 #### Domain Analysis #####
 
@@ -122,30 +123,48 @@ def get_total_number_of_domains(domains, num_channels, filter_value=None):
 
 def plot_mean_quantity(mean_dict, ch, quantity, r_min=3.5, **kwargs):
     cur_data = mean_dict[ch]
-    cur_data = cur_data.groupby('radius_scaled').agg('mean')
+    cur_data = cur_data.groupby('radius_scaled').agg(['mean', sp.stats.sem])
     cur_data = cur_data.reset_index()
 
     cur_data = cur_data.loc[cur_data['radius_scaled'] >= r_min, :]
 
-    plt.plot(cur_data['radius_scaled'], cur_data[quantity + '_mean'], **kwargs)
+    plt.plot(cur_data['radius_scaled'], cur_data[quantity + '_mean', 'mean'], marker='.', **kwargs)
+
+    # Plot error
+    x = cur_data['radius_scaled']
+    y = cur_data[quantity + '_mean', 'mean']
+    y_err = cur_data[quantity + '_mean', 'sem']
+
+    plt.fill_between(x, y + y_err, y - y_err, alpha=0.3, **kwargs)
 
 def plot_mean_num_domains(num_domains, ch, r_min=3.5, **kwargs):
     cur_data = num_domains[ch]
-    cur_data = cur_data.groupby('radius_scaled').agg('mean')
+    cur_data = cur_data.groupby('radius_scaled').agg(['mean', sp.stats.sem])
     cur_data = cur_data.reset_index()
 
     cur_data = cur_data.loc[cur_data['radius_scaled'] >= r_min, :]
 
-    plt.plot(cur_data['radius_scaled'], cur_data['num_domains'], **kwargs)
+    plt.plot(cur_data['radius_scaled'], cur_data['num_domains', 'mean'], marker='.', **kwargs)
+
+    # Plot error
+    x = cur_data['radius_scaled']
+    y = cur_data['num_domains', 'mean']
+    y_err = cur_data['num_domains', 'sem']
+    plt.fill_between(x, y + y_err, y - y_err, alpha=0.3, **kwargs)
 
 def plot_average_total_num_domains(total_num_domains, r_min=3.5, **kwargs):
 
-    cur_data = total_num_domains.groupby('radius_scaled').agg('mean')
+    cur_data = total_num_domains.groupby('radius_scaled').agg(['mean', sp.stats.sem])
     cur_data = cur_data.reset_index()
 
     cur_data = cur_data.loc[cur_data['radius_scaled'] >= r_min, :]
 
-    plt.plot(cur_data['radius_scaled'], cur_data['num_domains'], **kwargs)
+    plt.plot(cur_data['radius_scaled'], cur_data['num_domains', 'mean'], marker='.', **kwargs)
+    # Plot error
+    x = cur_data['radius_scaled']
+    y = cur_data['num_domains', 'mean']
+    y_err = cur_data['num_domains', 'sem']
+    plt.fill_between(x, y + y_err, y - y_err, alpha=0.3, **kwargs)
 
 def plot_domain_cdf(cdf_dict, cur_channel, quantity, min_radius=3.5, use_legend=True, plot_every=0.5):
 
@@ -164,9 +183,14 @@ def plot_domain_cdf(cdf_dict, cur_channel, quantity, min_radius=3.5, use_legend=
     for i, plot_this_value in zip(range(len(r_bins)), r_bins_mask): # Number of bins
         if plot_this_value:
             cur_data = cdf_dict[cur_channel, i]
-            mean_data = cur_data.groupby(level=0).agg('mean')
-            plt.plot(mean_data[quantity + '_midbin'], mean_data['ecdf'],
+            mean_data = cur_data.groupby(level=0).agg(['mean', sp.stats.sem])
+            plt.plot(mean_data[quantity + '_midbin', 'mean'], mean_data['ecdf', 'mean'],
                     color=colors_to_use[count], label=r_bins[i])
+            # Plot error
+            #x = mean_data[quantity + '_midbin', 'mean']
+            #y = mean_data['ecdf', 'mean']
+            #yerr = mean_data['ecdf', 'sem']
+            #plt.fill_between(x, y + yerr, y - yerr, alpha=0.3, color=colors_to_use[count])
             count += 1
     plt.hold(False)
 
@@ -197,7 +221,7 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
     plt.figure()
     plt.hold(True)
     for ch in range(num_colors):
-        plot_mean_quantity(mean_length_dict, ch, 'lengths_scaled', marker='.', color=color_list[ch], label=label_list[ch])
+        plot_mean_quantity(mean_length_dict, ch, 'lengths_scaled', color=color_list[ch], label=label_list[ch])
         plt.xlabel('Radius (mm)')
         plt.ylabel('Average Domain Size (mm)')
     plt.hold(False)
@@ -215,7 +239,7 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
     plt.figure()
     plt.hold(True)
     for ch in range(num_colors):
-        plot_mean_quantity(mean_angular_dict, ch, 'angular_width', marker='.', color=color_list[ch], label=label_list[ch])
+        plot_mean_quantity(mean_angular_dict, ch, 'angular_width', color=color_list[ch], label=label_list[ch])
         plt.xlabel('Radius (mm)')
         plt.ylabel('Average Domain Angular Width')
     plt.hold(False)
@@ -228,7 +252,7 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
     plt.figure()
     plt.hold(True)
     for ch in range(num_colors):
-        plot_mean_num_domains(num_domains, ch, marker='.', color=color_list[ch], label=label_list[ch])
+        plot_mean_num_domains(num_domains, ch, color=color_list[ch], label=label_list[ch])
         plt.xlabel('Radius (mm)')
         plt.ylabel('Number of Domains')
     plt.hold(False)
@@ -239,7 +263,7 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
 
     total_num_domains = get_total_number_of_domains(domains, num_colors)
     plt.figure()
-    plot_average_total_num_domains(total_num_domains, marker='.', linestyle='-')
+    plot_average_total_num_domains(total_num_domains, linestyle='-')
     plt.xlabel('Radius (mm)')
     plt.ylabel('Average Total Number of Domains')
     if save_plots:
