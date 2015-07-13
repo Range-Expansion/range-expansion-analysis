@@ -77,10 +77,9 @@ def make_x_axis_radians(unit=0.25, pi_range = np.pi):
     ax.set_xticks(x_tick*np.pi)
     ax.set_xticklabels(x_label)
 
-def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=100, offset_list=None):
+def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
-    new_r_bins = np.linspace(r_min, r_max, num_bins)
 
     fig, ax = ter.figure()
     fig.set_size_inches(16, 10)
@@ -90,17 +89,13 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
     ax.boundary(color='black')
     ax.gridlines(color='black', multiple=0.1)
 
-    groups = input_fracs.groupby('im_set')
+    fracs_rebinned, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins, average_data=False)
+
+    groups = fracs_rebinned.groupby('im_set')
 
     count = 0
     for group_name, cur_data in groups:
         ### Rebin ####
-        cur_data = cur_data.loc[cur_data['radius_midbin_scaled'] >= r_min, :]
-        cur_data = cur_data.loc[cur_data['radius_midbin_scaled'] <= r_max, :]
-
-        # Rebin
-        cut = pd.cut(cur_data['radius_midbin_scaled'], new_r_bins)
-        cur_data = cur_data.groupby(cut).agg('mean')
 
         fracs = cur_data.loc[:, 'ch0':'ch2'].values
 
@@ -148,10 +143,10 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     plt.hold(False)
 
-def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=100, offset_list=None):
+slicer = pd.IndexSlice
+def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
-    new_r_bins = np.linspace(r_min, r_max, num_bins)
 
     fig, ax = ter.figure()
     fig.set_size_inches(16, 10)
@@ -161,10 +156,8 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
     ax.boundary(color='black')
     ax.gridlines(color='black', multiple=0.1)
 
-    cut = pd.cut(input_fracs['radius_midbin_scaled'], new_r_bins)
-    cur_data = input_fracs.groupby(cut).agg('mean')
-
-    fracs = cur_data.loc[:, 'ch0':'ch2'].values
+    cur_data, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins)
+    fracs = cur_data.loc[:, slicer['ch0':'ch2', 'mean']].values
 
     n_colors = fracs.shape[0]
     cmap = sns.cubehelix_palette(as_cmap=True, n_colors=n_colors, light=0.7, dark=.05)
@@ -205,48 +198,70 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
 
     plt.hold(False)
 
+def group_fracs(fracs, min_radius=2.5, max_radius=10., num_bins=200, average_data=True):
+
+    bins = np.linspace(min_radius, max_radius, num_bins)
+    cut = pd.cut(fracs['radius_midbin_scaled'], bins)
+
+    # Group each channel separately, first, take the mean...basically
+    # get the same binning on each.
+
+    imset_gb = fracs.groupby(['im_set', cut])
+    rebinned_fracs = imset_gb.agg('mean')
+    # Drop the problem column...
+    rebinned_fracs.drop('radius_midbin_scaled', 1, inplace=True)
+    rebinned_fracs = rebinned_fracs.reset_index()
+
+    if not average_data:
+        return rebinned_fracs, bins
+    else:
+        # Now that everything has the same binning, average.
+        groups = rebinned_fracs.groupby('radius_midbin_scaled')
+        result = groups.agg([np.mean, sp.stats.sem, np.var, np.std])
+        result['radius_midbin_scaled'] = (bins[:-1] + bins[1:])/2.
+        if result[result.isnull().any(axis=1)].values.shape[0] != 0:
+            print 'Binning too tight, getting NaNs.'
+        return result, bins
+
+
 def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_radius=10, num_bins=150,
                             plot_mean=True):
 
     sns.set_style('white')
 
-    new_r_bins = np.linspace(min_radius, max_radius, num_bins)
-
-    # Average trajectory
-    cut = pd.cut(input_fracs['radius_midbin_scaled'], new_r_bins)
-    mean_fracs= input_fracs.groupby(cut).agg('mean')
-    err_fracs = input_fracs.groupby(cut).agg(sp.stats.sem)
+    # Get average data
+    mean_fracs, bins = group_fracs(input_fracs, min_radius=min_radius, max_radius=max_radius, num_bins=num_bins)
+    midbins =  (bins[:-1] + bins[1:])/2.
 
     plt.hold(True)
 
-    input_fracs = input_fracs.groupby('im_set')
+    # Loop over input fractions
+    trajectories, bins = group_fracs(input_fracs, average_data=False, min_radius=min_radius, max_radius=max_radius, num_bins=num_bins)
+    input_fracs = trajectories.groupby('im_set')
 
     num_imsets = len(input_fracs)
     new_cmap = sns.color_palette('husl', n_colors=num_imsets)
 
     count = 0
     for im_set, data in input_fracs:
-        data = data.loc[data['radius_midbin_scaled'] >= min_radius, :]
-        data = data.loc[data['radius_midbin_scaled'] <= max_radius, :]
+        data = data.iloc[midbins >= min_radius, :]
+        data = data.iloc[midbins <= max_radius, :]
 
         # Rebin
-        cut = pd.cut(data['radius_midbin_scaled'], new_r_bins)
-        data = data.groupby(cut).agg('mean')
-
-        plt.plot(data['ch1'], data['radius_midbin_scaled'],
+        plt.plot(data['ch1'], midbins,
                 color=new_cmap[count], linestyle='-')
         count += 1
 
     if plot_mean:
         mean_fracs = mean_fracs.loc[mean_fracs['radius_midbin_scaled'] >= min_radius, :]
         mean_fracs = mean_fracs.loc[mean_fracs['radius_midbin_scaled'] <= max_radius, :]
-        plt.plot(mean_fracs['ch1'], mean_fracs['radius_midbin_scaled'],
+        plt.plot(mean_fracs['ch1', 'mean'], mean_fracs['radius_midbin_scaled'],
                 color='black', linestyle='--', label='Mean Trajectory')
         plt.legend(loc='best')
 
         # Plot the error
-        x = mean_fracs['ch1']
-        xerr = err_fracs['ch1']
+        x = mean_fracs['ch1', 'mean']
+        xerr = mean_fracs['ch1', 'sem']
         y = mean_fracs['radius_midbin_scaled']
         plt.fill_betweenx(y, x - xerr, x + xerr, alpha=0.2, color='black')
 
