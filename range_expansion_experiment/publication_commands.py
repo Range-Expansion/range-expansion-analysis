@@ -9,6 +9,17 @@ import ternary as ter
 import pandas as pd
 import image_analysis as rei
 import scipy as sp
+import scikits.bootstrap as bs
+
+
+def bootstrap_column(gb, column_name, alpha=0.32):
+    "Alpha is 1 - the confidence interval desired."
+    data_list = []
+    for name, cur_data in gb:
+        data_list.append(cur_data[column_name].values)
+    data_list = np.array(data_list)
+    low_high = bs.ci(data_list, statfunction=lambda x: np.mean(x, axis=0), output='lowhigh', alpha=alpha)
+    return low_high
 
 def import_files_in_folder(title, quantity, i=None, j=None, base_directory='./'):
     folder_name = base_directory + title + '_' + quantity
