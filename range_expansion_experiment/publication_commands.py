@@ -280,8 +280,9 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
     bbox = plt.gca().get_window_extent().transformed(dps)
     width, height = bbox.width, bbox.height
 
-    ymin=-.002
-    ymax=.998
+    delta_epsilon = .0003
+    ymin= -delta_epsilon
+    ymax= 1 - delta_epsilon
     xmin=max_radius
     xmax=max_radius + .2
 
@@ -289,7 +290,7 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
     # manual arrowhead width and length
     hw = .2*(ymax-ymin)
     hl = .1*(xmax-xmin)
-    lw = .7# axis line width
+    lw = .5# axis line width
     ohg = 0.2 # arrow overhang
 
     # compute matching arrowhead length and width
