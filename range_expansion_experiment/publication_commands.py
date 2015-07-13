@@ -227,11 +227,9 @@ def group_fracs(fracs, min_radius=2.5, max_radius=10., num_bins=200, average_dat
 def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_radius=10, num_bins=150,
                             plot_mean=True):
 
-    sns.set_style('white')
-
     # Get average data
     mean_fracs, bins = group_fracs(input_fracs, min_radius=min_radius, max_radius=max_radius, num_bins=num_bins)
-    midbins =  (bins[:-1] + bins[1:])/2.
+    midbins = (bins[:-1] + bins[1:])/2.
 
     plt.hold(True)
 
@@ -244,64 +242,55 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
 
     count = 0
     for im_set, data in input_fracs:
-        data = data.iloc[midbins >= min_radius, :]
-        data = data.iloc[midbins <= max_radius, :]
-
-        # Rebin
-        plt.plot(data['ch1'], midbins,
+        plt.plot(midbins, data['ch1'],
                 color=new_cmap[count], linestyle='-')
         count += 1
 
     if plot_mean:
-        mean_fracs = mean_fracs.loc[mean_fracs['radius_midbin_scaled'] >= min_radius, :]
-        mean_fracs = mean_fracs.loc[mean_fracs['radius_midbin_scaled'] <= max_radius, :]
-        plt.plot(mean_fracs['ch1', 'mean'], mean_fracs['radius_midbin_scaled'],
+        plt.plot(mean_fracs['radius_midbin_scaled'], mean_fracs['ch1', 'mean'],
                 color='black', linestyle='--', label='Mean Trajectory')
         plt.legend(loc='best')
 
         # Plot the error
-        x = mean_fracs['ch1', 'mean']
-        xerr = mean_fracs['ch1', 'sem']
-        y = mean_fracs['radius_midbin_scaled']
-        plt.fill_betweenx(y, x - xerr, x + xerr, alpha=0.2, color='black')
+        y = mean_fracs['ch1', 'mean']
+        yerr = mean_fracs['ch1', 'sem']
+        x = mean_fracs['radius_midbin_scaled']
+        plt.fill_between(x, y - yerr, y + yerr, alpha=0.2, color='black')
 
     plt.hold(False)
-    plt.xlim(0, 1)
-    plt.ylim(max_radius, min_radius) # Flips axis in y
-    sns.despine(left=False, bottom=True, top=False, right=False)
+    plt.ylim(0, 1)
+    plt.xlim(min_radius, max_radius) # Flips axis in y
+    sns.despine(left=False, bottom=False, top=False, right=True)
 
-    plt.xlabel('Fraction')
-    plt.gca().xaxis.set_label_position('top')
-
-    plt.ylabel('Radius (mm)')
-
-    plt.setp(plt.gca().get_xticklabels(), visible=False)
-
-    # Now label eCFP & eYFP
+    plt.xlabel('Radius (mm)')
+    plt.ylabel('Fraction of eCFP')
     cur_ax = plt.gca()
 
-    cur_ax.annotate(labels[0], xy=(0, 1), xytext=(-10, 25), ha='left', va='top',
+    # Now label eCFP & eYFP
+
+    cur_ax.annotate(labels[0], xy=(0, 1), xytext=(10, -10), ha='left', va='top',
                    xycoords='axes fraction', textcoords='offset points',
                    fontsize=20, color=colors[0])
-    cur_ax.annotate(labels[1], xy=(1, 1), xytext=(-20, 25), ha='left', va='top',
+    cur_ax.annotate(labels[1], xy=(0, 0), xytext=(10, 20), ha='left', va='top',
                    xycoords='axes fraction', textcoords='offset points',
                    fontsize=20, color=colors[1])
 
-    # Adding an arrow to the bottom axis...painful
+    # # Adding an arrow to the bottom axis...painful
     dps = plt.gcf().dpi_scale_trans.inverted()
     bbox = plt.gca().get_window_extent().transformed(dps)
     width, height = bbox.width, bbox.height
 
-    ymin=min_radius
-    ymax=max_radius
-    xmax=1
-    xmin=0
+    ymin=-.002
+    ymax=.998
+    xmin=max_radius
+    xmax=max_radius + .2
+
 
     # manual arrowhead width and length
-    hw = 1./20.*(ymax-ymin)
-    hl = 1./20.*(xmax-xmin)
-    lw = 1. # axis line width
-    ohg = 0.3 # arrow overhang
+    hw = .2*(ymax-ymin)
+    hl = .1*(xmax-xmin)
+    lw = .7# axis line width
+    ohg = 0.2 # arrow overhang
 
     # compute matching arrowhead length and width
     yhw = hw/(ymax-ymin)*(xmax-xmin)* height/width
@@ -310,12 +299,13 @@ def make_twocolor_walk_plot(input_fracs, labels, colors, min_radius=3.5, max_rad
     cur_ax.spines['left'].set_color('black')
     cur_ax.spines['top'].set_color('black')
     cur_ax.spines['right'].set_color('black')
+    cur_ax.spines['bottom'].set_color('black')
 
-    cur_ax.arrow(0, ymin, 0., ymax-ymin, fc='k', ec='k', lw = lw,
+    cur_ax.arrow(xmin, ymax, xmax-xmin, 0, fc='k', ec='k', lw = lw,
              head_width=yhw, head_length=yhl, overhang = ohg,
              length_includes_head= True, clip_on = False, color='black')
 
-    cur_ax.arrow(1, ymin, 0, ymax-ymin, fc='k', ec='k', lw = lw,
+    cur_ax.arrow(xmin, ymin, xmax-xmin, 0, fc='k', ec='k', lw = lw,
              head_width=yhw, head_length=yhl, overhang = ohg,
              length_includes_head= True, clip_on = False, color='black')
 
