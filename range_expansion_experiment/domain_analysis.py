@@ -216,9 +216,8 @@ def plot_domain_cdf_trajectories(cdf_dict, cur_channel, quantity, min_radius=3.5
             if xlim is not None:
                 plt.xlim(xlim[0], xlim[1])
 
-def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save_plots= True, title=None, base_directory = './'):
+def analyze_and_plot_mean_length(domains, num_colors, label_list, color_list):
     mean_length_dict = get_mean_domain_quantity(domains, 'lengths_scaled', num_colors)
-    plt.figure()
     plt.hold(True)
     for ch in range(num_colors):
         plot_mean_quantity(mean_length_dict, ch, 'lengths_scaled', color=color_list[ch], label=label_list[ch])
@@ -227,16 +226,8 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
     plt.hold(False)
     plt.legend(loc='best')
 
-    if save_plots:
-        if title is None:
-            print 'Please input a title so I know where to save...'
-        folder_name = base_directory + title + '_domain_size_plots/'
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-        plt.savefig(folder_name + title + '_average_domain_size.png', dpi=200, bbox_inches='tight')
-
+def analyze_and_plot_mean_angular(domains, num_colors, label_list, color_list):
     mean_angular_dict = get_mean_domain_quantity(domains, 'angular_width', num_colors)
-    plt.figure()
     plt.hold(True)
     for ch in range(num_colors):
         plot_mean_quantity(mean_angular_dict, ch, 'angular_width', color=color_list[ch], label=label_list[ch])
@@ -245,11 +236,8 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
     plt.hold(False)
     plt.legend(loc='best')
 
-    if save_plots:
-        plt.savefig(folder_name + title + '_average_angular_width.png', dpi=200, bbox_inches='tight')
-
+def analyze_and_plot_num_domains(domains, num_colors, label_list, color_list):
     num_domains = get_number_of_domains_per_channel(domains, num_colors)
-    plt.figure()
     plt.hold(True)
     for ch in range(num_colors):
         plot_mean_num_domains(num_domains, ch, color=color_list[ch], label=label_list[ch])
@@ -258,32 +246,62 @@ def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save
     plt.hold(False)
     plt.legend(loc='best')
 
-    if save_plots:
-        plt.savefig(folder_name + title + '_average_num_domains.png', dpi=200, bbox_inches='tight')
-
+def analyze_and_plot_total_num_domains(domains, num_colors):
     total_num_domains = get_total_number_of_domains(domains, num_colors)
-    plt.figure()
     plot_average_total_num_domains(total_num_domains, linestyle='-')
     plt.xlabel('Radius (mm)')
     plt.ylabel('Average Total Number of Domains')
+
+def analyze_and_plot_cdf_lengths(domains, num_colors, channel):
+    length_bins = np.linspace(0, 30, 800)
+    cdf_lengths_dict = get_cdf_quantity_domains(domains, 'lengths_scaled', num_colors, length_bins)
+    plot_domain_cdf(cdf_lengths_dict, channel, 'lengths_scaled', plot_every=0.5)
+    plt.xlabel('Domain Length (mm)')
+
+def analyze_and_plot_cdf_angular(domains, num_colors, channel):
+    angular_bins = np.linspace(0, 2*np.pi, 800)
+    cdf_angular_dict = get_cdf_quantity_domains(domains, 'angular_width', num_colors, angular_bins)
+    plot_domain_cdf(cdf_angular_dict, channel, 'angular_width', plot_every=0.5)
+    plt.xlabel('Angular Width')
+    plt.xlim(0, np.pi/2)
+
+
+
+
+def plot_all_domain_quantities(domains, num_colors, label_list, color_list, save_plots= True, title=None, base_directory = './'):
+    plt.figure()
+    analyze_and_plot_mean_length(domains, num_colors, label_list, color_list)
+    if save_plots:
+        if title is None:
+            print 'Please input a title so I know where to save...'
+        folder_name = base_directory + title + '_domain_size_plots/'
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+        plt.savefig(folder_name + title + '_average_domain_size.png', dpi=200, bbox_inches='tight')
+
+    plt.figure()
+    analyze_and_plot_mean_angular(domains, num_colors, label_list, color_list)
+    if save_plots:
+        plt.savefig(folder_name + title + '_average_angular_width.png', dpi=200, bbox_inches='tight')
+
+    plt.figure()
+    analyze_and_plot_num_domains(domains, num_colors, label_list, color_list)
+    if save_plots:
+        plt.savefig(folder_name + title + '_average_num_domains.png', dpi=200, bbox_inches='tight')
+
+    plt.figure()
+    analyze_and_plot_total_num_domains(domains, num_colors)
     if save_plots:
         plt.savefig(folder_name + title + '_average_total_num_domains.png', dpi=200, bbox_inches='tight')
 
-    length_bins = np.linspace(0, 30, 800)
-    cdf_lengths_dict = get_cdf_quantity_domains(domains, 'lengths_scaled', num_colors, length_bins)
     for ch in range(num_colors):
         plt.figure()
-        plot_domain_cdf(cdf_lengths_dict, ch, 'lengths_scaled', plot_every=0.5)
-        plt.xlabel('Domain Length (mm)')
+        analyze_and_plot_cdf_lengths(domains, num_colors, ch)
         if save_plots:
             plt.savefig(folder_name + title + label_list[ch] + '_average_ecdf_lengths.png', dpi=200, bbox_inches='tight')
 
-    angular_bins = np.linspace(0, 2*np.pi, 800)
-    cdf_angular_dict = get_cdf_quantity_domains(domains, 'angular_width', num_colors, angular_bins)
     for ch in range(num_colors):
         plt.figure()
-        plot_domain_cdf(cdf_angular_dict, ch, 'angular_width', plot_every=0.5)
-        plt.xlabel('Angular Width')
-        plt.xlim(0, np.pi/2)
+        analyze_and_plot_cdf_angular(domains, num_colors, ch)
         if save_plots:
             plt.savefig(folder_name + title + label_list[ch] + '_average_ecdf_angular.png', dpi=200, bbox_inches='tight')
