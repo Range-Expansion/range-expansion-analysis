@@ -242,7 +242,7 @@ def analyze_and_plot_num_domains(domains, num_colors, label_list, color_list):
     for ch in range(num_colors):
         plot_mean_num_domains(num_domains, ch, color=color_list[ch], label=label_list[ch])
         plt.xlabel('Radius (mm)')
-        plt.ylabel('Number of Domains')
+        plt.ylabel('Average Number of Domains')
     plt.hold(False)
     plt.legend(loc='best')
 
