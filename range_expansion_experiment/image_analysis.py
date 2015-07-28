@@ -59,8 +59,8 @@ class Publication_Experiment(object):
         self.complete_annih = None
 
         # Initialize the experiment
-        self.experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
-                                            bigger_than_image=False, **kwargs)
+        self.experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache, **kwargs)
+        self.complete_radii = self.experiment.get_complete_im_sets('circle_folder')
         self.complete_masks = self.experiment.get_complete_im_sets('masks_folder')
         self.complete_annih = self.experiment.get_complete_im_sets('annihilation_folder')
 
@@ -130,7 +130,7 @@ class Publication_Experiment(object):
 
             if not self.cache:
                 self.experiment = Range_Expansion_Experiment(self.experiment_path, title=self.title, cache=self.cache,
-                                                bigger_than_image=False)
+                                                bigger_than_image=False) #TODO make bigger than image better behaved
 
             gc.collect()
 
@@ -660,7 +660,10 @@ class Image_Set(object):
         # Initialize rest of required stuff
 
         self.homeland_edge_radius = self.get_homeland_radius()
-        self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
+        if self.homeland_edge_radius is None:
+            self.homeland_edge_radius_scaled = None
+        else:
+            self.homeland_edge_radius_scaled = self.homeland_edge_radius * self.get_scaling()
 
         self.max_radius = self.get_max_radius()
         self.max_radius_scaled = self.max_radius * self.get_scaling()
@@ -1121,6 +1124,8 @@ class Image_Set(object):
     def get_center(self):
         """Returns the mean center and the standard error of the mean"""
         cur_homeland_mask = self.homeland_mask
+        if cur_homeland_mask is None:
+            return None
 
         center_list = []
         for i in range(cur_homeland_mask.shape[0]):
@@ -1137,49 +1142,38 @@ class Image_Set(object):
         return result_df
 
     def get_max_radius(self):
-        max_radius = None
-        if self.bigger_than_image:
-            # Find the minimum distance to the edge of the innoculation; this will be a straight line
-            # from the center to an edge
-            cur_center = self.center_df
-            cur_homeland_mask = self.homeland_mask
-            max_r = cur_homeland_mask.shape[1]
-            max_c = cur_homeland_mask.shape[2]
+        cur_brightfield_mask = self.brightfield_mask
+        diameter_list = []
+        for i in range(cur_brightfield_mask.shape[0]):
+            cur_image = cur_brightfield_mask[i, :, :]
+            # Find maximum diameter
+            r, c = np.where(cur_image)
+            diameter_r = np.float(r.max() - r.min())
+            diameter_c = np.float(c.max() - c.min())
+            # We need both of these checks in case the expansion is bigger than the image in one dimension...
+            desired_diameter = max(diameter_r, diameter_c)
+            diameter_list.append(desired_diameter)
+        diameter_list = np.array(diameter_list)
+        # Now find the mean radius
+        max_radius = int(np.floor(diameter_list.mean()/2))
+        return max_radius
 
-            dist_to_top = max_r - cur_center['r', 'mean']
-            dist_to_right = max_c - cur_center['c', 'mean']
-            dist_to_bottom = cur_center['r', 'mean']
-            dist_to_left = cur_center['c', 'mean']
-
-            max_radius = min(dist_to_top.values, dist_to_right.values, dist_to_bottom.values, dist_to_left.values)
-        else:
-            cur_brightfield_mask = self.brightfield_mask
-
+    def get_homeland_radius(self):
+        cur_homeland_mask = self.homeland_mask
+        if cur_homeland_mask is not None:
             diameter_list = []
-            for i in range(cur_brightfield_mask.shape[0]):
-                cur_image = cur_brightfield_mask[i, :, :]
+            for i in range(cur_homeland_mask.shape[0]):
+                cur_image = cur_homeland_mask[i, :, :]
                 # Find maximum diameter
                 r, c = np.where(cur_image)
                 diameter = np.float(r.max() - r.min())
                 diameter_list.append(diameter)
             diameter_list = np.array(diameter_list)
             # Now find the mean radius
-            max_radius = int(np.floor(diameter_list.mean()/2))
-        return max_radius
-
-    def get_homeland_radius(self):
-        cur_homeland_mask = self.homeland_mask
-        diameter_list = []
-        for i in range(cur_homeland_mask.shape[0]):
-            cur_image = cur_homeland_mask[i, :, :]
-            # Find maximum diameter
-            r, c = np.where(cur_image)
-            diameter = np.float(r.max() - r.min())
-            diameter_list.append(diameter)
-        diameter_list = np.array(diameter_list)
-        # Now find the mean radius
-        homeland_radius = int(np.floor(diameter_list.mean()/2))
-        return homeland_radius
+            homeland_radius = int(np.floor(diameter_list.mean()/2))
+            return homeland_radius
+        else:
+            return None
 
     def get_image_coordinate_df(self):
         """Returns image coordinates in r and theta. Uses the center of the brightfield mask

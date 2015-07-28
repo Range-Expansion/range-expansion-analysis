@@ -252,6 +252,7 @@ def analyze_and_plot_total_num_domains(domains, num_colors):
     plt.xlabel('Radius (mm)')
     plt.ylabel('Average Total Number of Domains')
 
+
 def analyze_and_plot_cdf_lengths(domains, num_colors, channel):
     length_bins = np.linspace(0, 30, 800)
     cdf_lengths_dict = get_cdf_quantity_domains(domains, 'lengths_scaled', num_colors, length_bins)
