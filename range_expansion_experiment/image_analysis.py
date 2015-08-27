@@ -390,7 +390,7 @@ class Range_Expansion_Experiment(object):
         return combined_annih, combined_coal
 
     def get_annihilation_asymmetry(self, im_set_indices_to_use, min_radius_scaled = 2.5, max_radius_scaled = 11,
-                                          num_bins = 20):
+                                          num_bins = 10):
         new_r_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
         deltaP_list = []
         for index in im_set_indices_to_use:
