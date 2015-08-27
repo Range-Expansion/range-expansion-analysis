@@ -378,6 +378,35 @@ class Range_Expansion_Experiment(object):
 
         return combined_annih, combined_coal
 
+    def get_annihilation_asymmetry(self, im_set_indices_to_use, min_radius_scaled = 2.5, max_radius_scaled = 11,
+                                          num_bins = 500):
+        new_r_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
+        deltaP_list = []
+        for index in im_set_indices_to_use:
+            cur_im_set = self.image_set_list[index]
+            annih, coal = cur_im_set.get_annih_and_coal()
+
+            # index by the new r bins
+            annih_cut = pd.cut(annih['radius_scaled'], new_r_bins)
+            annih_levels = annih_cut.cat.categories
+            annih_binned = pd.value_counts(annih_cut).reindex(annih_levels)
+
+            coal_cut = pd.cut(annih['radius_scaled'], new_r_bins)
+            coal_levels = coal_cut.cat.categories
+            coal_binned = pd.value_counts(coal_cut).reindex(coal_levels)
+
+            deltaP_array = (annih_binned - coal_binned)/(annih_binned + coal_binned)
+
+            deltaP_array['imset_index'] = index
+            deltaP_array['bio_replicate'] = cur_im_set.get_biorep_name()
+            deltaP_array['bio_replicate'] = cur_im_set.get_biorep_name()
+
+            deltaP_list.append(deltaP_array)
+
+        combined_list = pd.concat(deltaP_list)
+
+        return combined_list
+
     @staticmethod
     def bin_multiple_df_on_r_getmean(df_list, max_r_scaled, num_r_bins = 600):
         # Set up binning
