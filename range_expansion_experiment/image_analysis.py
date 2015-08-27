@@ -408,6 +408,7 @@ class Range_Expansion_Experiment(object):
 
             deltaP_array = (annih_binned - coal_binned)/(annih_binned + coal_binned)
 
+
             deltaP_array['imset_index'] = index
             deltaP_array['bio_replicate'] = cur_im_set.get_biorep_name()
             deltaP_array['bio_replicate'] = cur_im_set.get_biorep_name()
