@@ -389,8 +389,8 @@ class Range_Expansion_Experiment(object):
 
         return combined_annih, combined_coal
 
-    def get_annihilation_asymmetry(self, im_set_indices_to_use, min_radius_scaled = 2.5, max_radius_scaled = 11,
-                                          num_bins = 10):
+    def get_annihilation_asymmetry(self, im_set_indices_to_use, min_radius_scaled = 3.5, max_radius_scaled = 11,
+                                          num_bins = 7):
         new_r_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
         deltaP_list = []
         for index in im_set_indices_to_use:
@@ -402,18 +402,20 @@ class Range_Expansion_Experiment(object):
             annih_levels = annih_cut.cat.categories
             annih_binned = pd.value_counts(annih_cut).reindex(annih_levels)
 
-            coal_cut = pd.cut(annih['radius_scaled'], new_r_bins)
+            coal_cut = pd.cut(coal['radius_scaled'], new_r_bins)
             coal_levels = coal_cut.cat.categories
             coal_binned = pd.value_counts(coal_cut).reindex(coal_levels)
 
             deltaP_array = (annih_binned - coal_binned)/(annih_binned + coal_binned)
 
+            deltaP_df = deltaP_array.to_frame(name='deltaP')
+            deltaP_df['radius_midbin_scaled'] = (new_r_bins[1:] + new_r_bins[0:-1])/2.
 
-            deltaP_array['imset_index'] = index
-            deltaP_array['bio_replicate'] = cur_im_set.get_biorep_name()
-            deltaP_array['bio_replicate'] = cur_im_set.get_biorep_name()
+            deltaP_df['imset_index'] = index
+            deltaP_df['bio_replicate'] = cur_im_set.get_biorep_name()
+            deltaP_df['bio_replicate'] = cur_im_set.get_biorep_name()
 
-            deltaP_list.append(deltaP_array)
+            deltaP_list.append(deltaP_df)
 
         combined_list = pd.concat(deltaP_list)
 
