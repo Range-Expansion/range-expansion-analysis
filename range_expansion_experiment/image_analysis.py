@@ -147,6 +147,17 @@ class Publication_Experiment(object):
         with open(self.experiment.title + '_coal.pkl', 'wb') as fi:
             pkl.dump(combined_coal, fi)
 
+    def write_annihilation_asymmetry_to_disk(self, **kwargs):
+
+        for q in self.complete_annih:
+            self.experiment.image_set_list[q].finish_setup()
+
+        combined_deltaP = self.experiment.get_annihilation_asymmetry(self.complete_annih,
+                                                                     min_radius_scaled=self.annih_min_radius,
+                                                                     **kwargs)
+        with open(self.data_export_directory + self.experiment.title + '_annih_asymmetry.pkl', 'wb') as fi:
+            pkl.dump(combined_deltaP, fi)
+
     def write_fraction_trajectories_to_disk(self, min_radius=2.5, max_radius=10):
         "Don't worry about memory here."
 
@@ -379,7 +390,7 @@ class Range_Expansion_Experiment(object):
         return combined_annih, combined_coal
 
     def get_annihilation_asymmetry(self, im_set_indices_to_use, min_radius_scaled = 2.5, max_radius_scaled = 11,
-                                          num_bins = 500):
+                                          num_bins = 20):
         new_r_bins = np.linspace(min_radius_scaled, max_radius_scaled, num_bins)
         deltaP_list = []
         for index in im_set_indices_to_use:
