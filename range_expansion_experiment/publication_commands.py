@@ -143,6 +143,127 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     plt.hold(False)
 
+
+def make_ternary_plot_linear(fracs_rebinned, label_list, color_list,  y_min=1, y_max=4.75, offset_list=None):
+    if offset_list is None:
+        offset_list = [[-15, -7], [-30, 20], [-30, -7]]
+
+    fig, ax = ter.figure()
+    fig.set_size_inches(16, 10)
+
+    plt.hold(True)
+
+    ax.boundary(color='black')
+    ax.gridlines(color='black', multiple=0.1)
+
+    groups = fracs_rebinned.groupby('im_set')
+
+    count = 0
+    for group_name, cur_data in groups:
+        ### Rebin ####
+
+        fracs = cur_data.loc[:, 'f0':'f2'].values
+
+        n_colors = fracs.shape[0]
+        cmap = sns.cubehelix_palette(as_cmap=True, n_colors=n_colors, light=0.7, dark=.05)
+
+        ax.plot_colored_trajectory(fracs, cmap, alpha=1)
+        start_label = None
+        finish_label = None
+        if (count == len(groups) - 1):
+            start_label = 'Start'
+            finish_label = 'Finish'
+
+        ax.scatter([fracs[0, :]], s=20, color='red', zorder=99999, marker='o', label=start_label)
+        ax.scatter([fracs[-1, :]], s=20, color='black', zorder=99999, marker='o', label=finish_label)
+
+        count += 1
+
+    plt.gca().get_xaxis().set_visible(False)
+    plt.gca().get_yaxis().set_visible(False)
+
+    plt.xlim(-.1, 1.1)
+    plt.ylim(-.07, .93)
+
+    new_ax = plt.gca()
+
+    # Make a colorbar
+    ter.heatmapping.colorbar_hack(new_ax, y_min, y_max, cmap, text_format='%.2f',
+                                 numticks=6, title=r'$y$ (mm)')
+
+    ### Create annotations specifying the edges ####
+
+    positions_list = [ter.project_point([1, 0, 0]), ter.project_point([0, 1, 0]),
+                 ter.project_point([0, 0, 1])]
+
+    for pos, label, offset, color in zip(positions_list, label_list, offset_list, color_list):
+        new_ax.annotate(label, xy=pos, xytext=offset, ha='left',
+                        va='top', xycoords='data',
+                        textcoords='offset points',
+                        fontsize=20, color=color)
+
+    plt.gca().set_aspect('equal')
+
+    plt.legend(loc='best')
+
+    plt.hold(False)
+
+
+def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None):
+    if offset_list is None:
+        offset_list = [[-15, -7], [-30, 20], [-30, -7]]
+
+    fig, ax = ter.figure()
+    fig.set_size_inches(16, 10)
+
+    plt.hold(True)
+
+    ax.boundary(color='black')
+    ax.gridlines(color='black', multiple=0.1)
+
+    cur_data, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins)
+    fracs = cur_data.loc[:, slicer['ch0':'ch2', 'mean']].values
+
+    n_colors = fracs.shape[0]
+    cmap = sns.cubehelix_palette(as_cmap=True, n_colors=n_colors, light=0.7, dark=.05)
+
+    ax.plot_colored_trajectory(fracs, cmap, alpha=1)
+
+    start_label = 'Start'
+    finish_label = 'Finish'
+    ax.scatter([fracs[0, :]], s=20, color='red', zorder=99999, marker='o', label=start_label)
+    ax.scatter([fracs[-1, :]], s=20, color='black', zorder=99999, marker='o', label=finish_label)
+
+    plt.gca().get_xaxis().set_visible(False)
+    plt.gca().get_yaxis().set_visible(False)
+
+    plt.xlim(-.1, 1.1)
+    plt.ylim(-.07, .93)
+
+    new_ax = plt.gca()
+
+    # Make a colorbar
+    ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
+                                 numticks=6, title='Radius (mm)')
+
+    ### Create annotations specifying the edges ####
+
+    positions_list = [ter.project_point([1, 0, 0]), ter.project_point([0, 1, 0]),
+                 ter.project_point([0, 0, 1])]
+
+    for pos, label, offset, color in zip(positions_list, label_list, offset_list, color_list):
+        new_ax.annotate(label, xy=pos, xytext=offset, ha='left',
+                        va='top', xycoords='data',
+                        textcoords='offset points',
+                        fontsize=20, color=color)
+
+    plt.gca().set_aspect('equal')
+
+    plt.legend(loc='best')
+
+    plt.hold(False)
+
+
 slicer = pd.IndexSlice
 def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None):
     if offset_list is None:
