@@ -135,6 +135,7 @@ def plot_mean_quantity(mean_dict, ch, quantity, r_min=3.5, **kwargs):
     y = cur_data[quantity + '_mean', 'mean']
     y_err = cur_data[quantity + '_mean', 'sem']
 
+    kwargs['label'] = ''
     plt.fill_between(x, y + y_err, y - y_err, alpha=0.3, **kwargs)
 
 def plot_mean_num_domains(num_domains, ch, r_min=3.5, **kwargs):
