@@ -290,9 +290,21 @@ class Range_Expansion_Experiment(object):
         self.path_dict['annihilation_folder'] = base_folder + 'annihilation_and_coalescence/'
         self.path_dict['homeland_folder'] = base_folder + 'homeland/'
 
+        self.path_dict['labeled_domains'] = base_folder + 'labeled_domains/'
+
         self.image_set_list = None
 
         self.finish_setup(**kwargs)
+
+    def get_domain_dfs(self, indices_to_use, **kwargs):
+        df_list = []
+        for index in indices_to_use:
+            cur_imset = self.image_set_list[index]
+            df = cur_imset.get_domain_dfs(**kwargs)
+            df['imset_index'] = index
+
+            df_list.append(df)
+        return pd.concat(df_list)
 
     def finish_setup(self, **kwargs):
         # Get a list of all images
@@ -683,6 +695,10 @@ class Image_Set(object):
         self._fluorescent_mask = None
         self._image = None
 
+        # Domain sweeps
+        self._labeled_domains = None
+        self._unique_labeled_domains = None
+
         # Other useful stuff for data analysis
         self._image_coordinate_df = None
         self._fractions = None
@@ -731,6 +747,130 @@ class Image_Set(object):
 
         self.max_radius = None
         self.max_radius_scaled = None
+
+    ###### Labeled Domains ####
+    @property
+    def labeled_domains(self):
+        '''Each domain has the same label.'''
+        if self._labeled_domains is None:
+            try:
+                temp_domains = ski.io.imread(self.path_dict['labeled_domains'] + self.image_name, plugin='tifffile')
+                # Transform the colored domains into greyscale
+                temp_domains_color = np.rollaxis(temp_domains, 0, 3)
+                grey_domains = ski.color.rgb2gray(temp_domains_color)
+
+                # Transform the greyscale labels into unique binary labels
+                unique_greys = np.unique(grey_domains)
+                final_labeled_domains = np.zeros(grey_domains.shape, dtype=np.int)
+                count = 1
+                for u in unique_greys:
+                    if u != 0:
+                        final_labeled_domains[grey_domains == u] = count
+                        count += 1
+            except IOError:
+                print 'No labeled domains found...'
+                return None
+
+            if self.cache:
+                self._labeled_domains = final_labeled_domains
+                return self._labeled_domains
+        else:
+            return self._labeled_domains
+
+    @labeled_domains.setter
+    def labeled_domains(self, value):
+        self._labeled_domains = value
+
+    @labeled_domains.deleter
+    def labeled_domains(self):
+        del self._labeled_domains
+
+    def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300):
+        labeled_domains = self.labeled_domains
+        unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
+
+        cur_im_df = self.image_coordinate_df
+        cur_im_df['domain_label'] = labeled_domains.ravel()
+        cur_im_df['unique_label'] = unique_labels.ravel()
+
+        # Only focus on the domains.
+        nonzero_im_df = cur_im_df.loc[cur_im_df['domain_label'] != 0, :]
+
+        # Get bins to average over each radius
+        radius_bins = np.linspace(radius_start, radius_end, num=num_bins)
+        mid_radius_bins = (radius_bins[:-1] + radius_bins[1:])/2.
+
+        bin_cut = pd.cut(nonzero_im_df.radius_scaled, radius_bins, labels=mid_radius_bins)
+        # Filter boundaries to a single point at each radius
+        filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
+        filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
+
+        # Loop over domains, extract desired info
+        domain_df = filtered_boundaries.reset_index().set_index(['domain_label'])
+        delta_df_list = []
+
+        for cur_domain, cur_domain_data in domain_df.groupby(level=0):
+            # Group the domain data by the unique label of each edge.
+            gb = cur_domain_data.groupby('unique_label')
+            # There should be two indices in the group. Any more and something terrible has happened...
+            df_list = []
+            for n, d in gb:
+                df_list.append(d.set_index('radius_scaled'))
+
+            assert len(df_list) == 2, 'There should only be two edges per domain...I am getting ' + str(len(df_list))
+
+            # Get deltaTheta at each radius from the distance between the two domains.
+            delta_df = df_list[0] - df_list[1]
+            delta_df['deltaX'] = np.sqrt(delta_df['r']**2 + delta_df['c']**2)
+            delta_df['deltaX_scaled'] = self.get_scaling() * delta_df['deltaX']
+
+            delta_df.reset_index(inplace=True)
+            # Use trig to derive how the distance between the two points relates to deltaTheta.
+            # Required as if theta changes from 2pi -> 0, bad things can happen when averaging.
+            delta_df['delta_theta'] = 2 * np.arcsin(delta_df['deltaX_scaled']/(2*delta_df['radius_scaled']))
+
+            delta_df.drop(['unique_label', 'c', 'r', 'delta_r', 'delta_c', 'radius', 'radius_scaled_mean', 'theta'],
+                          axis=1, inplace=True)
+
+            delta_df.dropna(inplace=True)
+
+            # Get the maximum surviving radius
+            initial_radius = np.min(delta_df['radius_scaled'])
+
+            delta_df['initial_radius'] = initial_radius
+            max_surviving_radius = np.max(delta_df['radius_scaled'])
+            delta_df['max_radius'] = max_surviving_radius
+
+            # Get the initial angle
+            initial_theta = delta_df['delta_theta'].iloc[0]
+            delta_df['theta_o'] = initial_theta
+            delta_df['theta_minus_theta_o'] = delta_df['delta_theta'] - delta_df['theta_o']
+
+            # Based on the desired bins, if the domain went extinct, return
+            # zero delta_theta. So, we probably have to reindex...
+
+            delta_df.set_index('radius_scaled', inplace=True)
+            delta_df = delta_df.reindex(index=mid_radius_bins)
+            delta_df.reset_index(inplace=True)
+
+            # If the domain goest extinct, set deltaTheta to zero.
+            delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['delta_theta', 'deltaX', 'deltaX_scaled']] = 0
+
+            delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['theta_minus_theta_o']] = -initial_theta
+
+            delta_df['theta_o'] = initial_theta
+            delta_df['initial_radius'] = initial_radius
+            delta_df['max_radius'] = max_surviving_radius
+            delta_df['domain_label'] = cur_domain
+
+            # Now calculate the difference in theta...I chose poor variable names
+
+            delta_df['log_R_div_Ro'] = np.log(delta_df['radius_scaled']/delta_df['initial_radius'])
+
+            delta_df_list.append(delta_df)
+
+        combined_domains = pd.concat(delta_df_list)
+        return combined_domains
 
     ###### Circular Mask ######
     @property
