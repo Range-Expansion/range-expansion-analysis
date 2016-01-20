@@ -785,7 +785,7 @@ class Image_Set(object):
     def labeled_domains(self):
         del self._labeled_domains
 
-    def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300):
+    def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
         labeled_domains = self.labeled_domains
         unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
 
@@ -840,6 +840,9 @@ class Image_Set(object):
             delta_df['initial_radius'] = initial_radius
             max_surviving_radius = np.max(delta_df['radius_scaled'])
             delta_df['max_radius'] = max_surviving_radius
+            # Get deltaTheta at the max surviving radius
+            final_deltaTheta = delta_df.iloc[-1]['delta_theta']
+
 
             # Get the initial angle
             initial_theta = delta_df['delta_theta'].iloc[0]
@@ -853,10 +856,12 @@ class Image_Set(object):
             delta_df = delta_df.reindex(index=mid_radius_bins)
             delta_df.reset_index(inplace=True)
 
-            # If the domain goest extinct, set deltaTheta to zero.
-            delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['delta_theta', 'deltaX', 'deltaX_scaled']] = 0
-
-            delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['theta_minus_theta_o']] = -initial_theta
+            # If the domain goest extinct, set variables appropriately. Extinction is defined by a cutoff theta at the end.
+            went_extinct = False
+            if final_deltaTheta < theta_death:
+               went_extinct = True
+               delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['delta_theta', 'deltaX', 'deltaX_scaled']] = 0
+               delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['theta_minus_theta_o']] = -initial_theta
 
             delta_df['theta_o'] = initial_theta
             delta_df['initial_radius'] = initial_radius
