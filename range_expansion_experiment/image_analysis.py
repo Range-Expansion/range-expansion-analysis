@@ -785,7 +785,7 @@ class Image_Set(object):
     def labeled_domains(self):
         del self._labeled_domains
 
-    def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
+    def get_edge_df(self, radius_start=0, radius_end=11, num_bins=300):
         labeled_domains = self.labeled_domains
         unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
 
@@ -805,7 +805,12 @@ class Image_Set(object):
         filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
         filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
 
+        return filtered_boundaries, mid_radius_bins
+
+    def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
+
         # Loop over domains, extract desired info
+        filtered_boundaries, mid_radius_bins = self.get_edge_df(radius_start=radius_start, radius_end=radius_end, num_bins=num_bins)
         domain_df = filtered_boundaries.reset_index().set_index(['domain_label'])
         delta_df_list = []
 
