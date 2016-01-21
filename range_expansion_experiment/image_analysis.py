@@ -306,6 +306,16 @@ class Range_Expansion_Experiment(object):
             df_list.append(df)
         return pd.concat(df_list)
 
+    def get_edge_dfs(self, indices_to_use, **kwargs):
+        df_list = []
+        for index in indices_to_use:
+            cur_imset = self.image_set_list[index]
+            df, midbins = cur_imset.get_edge_df(**kwargs)
+            df['imset_index'] = index
+
+            df_list.append(df)
+        return pd.concat(df_list), midbins
+
     def finish_setup(self, **kwargs):
         # Get a list of all images
         tif_paths = glob.glob(self.path_dict['tif_folder'] + '*.ome.tif')
@@ -796,6 +806,30 @@ class Image_Set(object):
         # Only focus on the domains.
         nonzero_im_df = cur_im_df.loc[cur_im_df['domain_label'] != 0, :]
 
+        # Filter the nonzero_im_df now so that the correct initial radius and theta_o are chosen
+        nonzero_im_df = nonzero_im_df.loc[nonzero_im_df['radius_scaled'] <= radius_end, :]
+        nonzero_im_df = nonzero_im_df.loc[nonzero_im_df['radius_scaled'] >= radius_start, :]
+
+        # Create the delta_theta variable for each edge.
+        delta_theta_list = []
+        for name, cur_data in  nonzero_im_df.groupby('unique_label'):
+            initial_radius = np.min(cur_data['radius_scaled'])
+            cur_data['initial_radius'] = initial_radius
+
+            start_theta = cur_data.loc[cur_data['radius_scaled'] == initial_radius, 'theta'].values[0]
+            cur_data['theta_o'] = start_theta
+            cur_data['delta_theta'] = cur_data['theta'] - cur_data['theta_o']
+
+            # We also need the intial radius
+
+            # Make sure delta_theta lies between 0 and 2pi...or else disaster can strike!
+            cur_data.loc[cur_data['delta_theta'] < -np.pi, 'delta_theta'] += 2*np.pi
+            cur_data.loc[cur_data['delta_theta'] > np.pi, 'delta_theta'] -= 2*np.pi
+
+            delta_theta_list.append(cur_data)
+
+        nonzero_im_df = pd.concat(delta_theta_list, ignore_index=True)
+
         # Get bins to average over each radius
         radius_bins = np.linspace(radius_start, radius_end, num=num_bins)
         mid_radius_bins = (radius_bins[:-1] + radius_bins[1:])/2.
@@ -804,6 +838,15 @@ class Image_Set(object):
         # Filter boundaries to a single point at each radius
         filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
         filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
+
+        filtered_boundaries.drop(['c', 'r', 'delta_r', 'delta_c', 'theta', 'radius'], axis=1, inplace=True)
+
+        # Assign the initial radius, drop NaN's
+        filtered_boundaries.dropna(inplace=True)
+        filtered_boundaries.reset_index(inplace=True)
+
+        # Make the radius_scaled a number...not a category. Or bad things happen.
+        filtered_boundaries['radius_scaled'] = filtered_boundaries['radius_scaled'].astype(np.double)
 
         return filtered_boundaries, mid_radius_bins
 
@@ -1114,8 +1157,6 @@ class Image_Set(object):
     def frac_df(self):
         del self._frac_df_list
 
-
-
     ####### Image Coordinate df ####
     @property
     def image_coordinate_df(self):
@@ -1134,6 +1175,62 @@ class Image_Set(object):
     @image_coordinate_df.deleter
     def image_coordinate_df(self):
         del self._image_coordinate_df
+
+    def get_image_coordinate_df(self):
+        """Returns image coordinates in r and theta. Uses the center of the brightfield mask
+        as the origin."""
+        rows = np.arange(0, self.image.shape[1])
+        columns = np.arange(0, self.image.shape[2])
+        rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
+
+        r_ravel = rmesh.ravel()
+        c_ravel = cmesh.ravel()
+
+        df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel})
+
+        cur_center_df = self.center_df
+        df['delta_r'] = df['r'] - cur_center_df['r', 'mean'].values
+        df['delta_c'] = df['c'] - cur_center_df['c', 'mean'].values
+        df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
+        df['radius_scaled'] = df['radius'] * self.get_scaling()
+        df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
+
+        return df
+
+    def bin_image_coordinate_r_df(self, df):
+        max_r_ceil = np.floor(df['radius'].max())
+        bins = np.arange(0, max_r_ceil+ 2 , 1.5)
+        groups = df.groupby(pd.cut(df.radius, bins))
+        mean_groups = groups.agg('mean')
+        # Assign the binning midpoints...
+        mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
+        mean_groups['radius_midbin_scaled'] = mean_groups['radius_midbin'] * self.get_scaling()
+
+        return mean_groups, bins
+
+    def bin_theta_at_r_df(self, df, r, delta_x=1.5):
+        """Assumes that the df has image_coordinate structure."""
+        theta_df_list = []
+
+        delta_theta = delta_x / float(r)
+        theta_bins = np.arange(-np.pi, np.pi + delta_theta, delta_theta)
+        theta_bins = theta_bins[:-1]
+
+        # First get the theta at the desired r; r should be an int
+        theta_df = df.query('(radius >= @r - 0.75) & (radius < @r + 0.75)')
+        # TODO Below is a very slow line, try to speed it up
+
+        theta_cut = pd.cut(theta_df['theta'], theta_bins)
+        groups = theta_df.groupby(theta_cut)
+        mean_df = groups.agg('mean')
+        # Check for nan's
+        if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
+            print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
+                  ' name= ' + self.image_name
+            print mean_df[mean_df.isnull().any(axis=1)]
+
+        return mean_df, theta_bins
+
 
     ####### Main Functions #######
 
@@ -1368,60 +1465,6 @@ class Image_Set(object):
         else:
             return None
 
-    def get_image_coordinate_df(self):
-        """Returns image coordinates in r and theta. Uses the center of the brightfield mask
-        as the origin."""
-        rows = np.arange(0, self.image.shape[1])
-        columns = np.arange(0, self.image.shape[2])
-        rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
-
-        r_ravel = rmesh.ravel()
-        c_ravel = cmesh.ravel()
-
-        df = pd.DataFrame(data={'r': r_ravel, 'c': c_ravel})
-
-        cur_center_df = self.center_df
-        df['delta_r'] = df['r'] - cur_center_df['r', 'mean'].values
-        df['delta_c'] = df['c'] - cur_center_df['c', 'mean'].values
-        df['radius'] = (df['delta_r']**2. + df['delta_c']**2.)**0.5
-        df['radius_scaled'] = df['radius'] * self.get_scaling()
-        df['theta'] = np.arctan2(df['delta_r'], df['delta_c'])
-
-        return df
-
-    def bin_image_coordinate_r_df(self, df):
-        max_r_ceil = np.floor(df['radius'].max())
-        bins = np.arange(0, max_r_ceil+ 2 , 1.5)
-        groups = df.groupby(pd.cut(df.radius, bins))
-        mean_groups = groups.agg('mean')
-        # Assign the binning midpoints...
-        mean_groups['radius_midbin'] = (bins[1:] + bins[:-1])/2.
-        mean_groups['radius_midbin_scaled'] = mean_groups['radius_midbin'] * self.get_scaling()
-
-        return mean_groups, bins
-
-    def bin_theta_at_r_df(self, df, r, delta_x=1.5):
-        """Assumes that the df has image_coordinate structure."""
-        theta_df_list = []
-
-        delta_theta = delta_x / float(r)
-        theta_bins = np.arange(-np.pi, np.pi + delta_theta, delta_theta)
-        theta_bins = theta_bins[:-1]
-
-        # First get the theta at the desired r; r should be an int
-        theta_df = df.query('(radius >= @r - 0.75) & (radius < @r + 0.75)')
-        # TODO Below is a very slow line, try to speed it up
-
-        theta_cut = pd.cut(theta_df['theta'], theta_bins)
-        groups = theta_df.groupby(theta_cut)
-        mean_df = groups.agg('mean')
-        # Check for nan's
-        if not mean_df[mean_df.isnull().any(axis=1)].empty > 0:
-            print 'theta binning in bin_theta_at_r_df is producing NaN at r=' +str(r) + ', delta_x=' + str(delta_x) + \
-                  ' name= ' + self.image_name
-            print mean_df[mean_df.isnull().any(axis=1)]
-
-        return mean_df, theta_bins
 
     def get_local_hetero_df(self):
 
