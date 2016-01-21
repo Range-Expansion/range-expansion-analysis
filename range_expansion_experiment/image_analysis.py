@@ -310,11 +310,11 @@ class Range_Expansion_Experiment(object):
         df_list = []
         for index in indices_to_use:
             cur_imset = self.image_set_list[index]
-            df, midbins = cur_imset.get_edge_df(**kwargs)
+            df = cur_imset.get_edge_df(**kwargs)
             df['imset_index'] = index
 
             df_list.append(df)
-        return pd.concat(df_list), midbins
+        return pd.concat(df_list)
 
     def finish_setup(self, **kwargs):
         # Get a list of all images
@@ -815,16 +815,39 @@ class Image_Set(object):
         filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
         filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
 
-        filtered_boundaries.drop(['c', 'r', 'delta_r', 'delta_c', 'theta', 'radius'], axis=1, inplace=True)
+        # Now that we have the average delta_r and delta_c, get the new average delta_theta
+        # Doing this earlier can result in disaster due to the cut in the theta plane
+        filtered_boundaries['theta'] = np.arctan2(filtered_boundaries['delta_r'], filtered_boundaries['delta_c'])
 
-        # Assign the initial radius, drop NaN's
-        filtered_boundaries.dropna(inplace=True)
-        filtered_boundaries.reset_index(inplace=True)
+        edge_df = filtered_boundaries.reset_index().set_index(['unique_label']).dropna() # We don't want to deal with Nan's here
 
-        # Make the radius_scaled a number...not a category. Or bad things happen.
-        filtered_boundaries['radius_scaled'] = filtered_boundaries['radius_scaled'].astype(np.double)
+        edge_df_list= []
+        for cur_edge, cur_edge_data in edge_df.groupby(level=0): # Loop over edges instead of domains
+            # Group the domain data by the unique label of each edge.
 
-        return filtered_boundaries, mid_radius_bins
+            initial_radius = np.min(cur_edge_data['radius_scaled'])
+            cur_edge_data['initial_radius'] = initial_radius
+
+            initial_radius_row = cur_edge_data.loc[cur_edge_data['radius_scaled'] == initial_radius, :]
+            theta_o = initial_radius_row['theta']
+            cur_edge_data['theta_o'] = theta_o
+
+            cur_edge_data['delta_theta'] = cur_edge_data['theta'] - cur_edge_data['theta_o']
+            # Make sure delta_theta is between 0 and 2pi
+
+            cur_edge_data.loc[cur_edge_data['delta_theta'] < -np.pi, 'delta_theta'] += 2*np.pi
+            cur_edge_data.loc[cur_edge_data['delta_theta'] > np.pi, 'delta_theta'] -= 2*np.pi
+
+            cur_edge_data.drop(['domain_label', 'c', 'r', 'delta_r', 'delta_c', 'radius', 'radius_scaled_mean'],
+                          axis=1, inplace=True)
+
+            cur_edge_data.dropna(inplace=True)
+
+            edge_df_list.append(cur_edge_data)
+
+        combined_domains = pd.concat(edge_df_list)
+        combined_domains.reset_index(inplace=True)
+        return combined_domains
 
     def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
         labeled_domains = self.labeled_domains
