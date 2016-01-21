@@ -806,30 +806,6 @@ class Image_Set(object):
         # Only focus on the domains.
         nonzero_im_df = cur_im_df.loc[cur_im_df['domain_label'] != 0, :]
 
-        # Filter the nonzero_im_df now so that the correct initial radius and theta_o are chosen
-        nonzero_im_df = nonzero_im_df.loc[nonzero_im_df['radius_scaled'] <= radius_end, :]
-        nonzero_im_df = nonzero_im_df.loc[nonzero_im_df['radius_scaled'] >= radius_start, :]
-
-        # Create the delta_theta variable for each edge.
-        delta_theta_list = []
-        for name, cur_data in  nonzero_im_df.groupby('unique_label'):
-            initial_radius = np.min(cur_data['radius_scaled'])
-            cur_data['initial_radius'] = initial_radius
-
-            start_theta = cur_data.loc[cur_data['radius_scaled'] == initial_radius, 'theta'].values[0]
-            cur_data['theta_o'] = start_theta
-            cur_data['delta_theta'] = cur_data['theta'] - cur_data['theta_o']
-
-            # We also need the intial radius
-
-            # Make sure delta_theta lies between 0 and 2pi...or else disaster can strike!
-            cur_data.loc[cur_data['delta_theta'] < -np.pi, 'delta_theta'] += 2*np.pi
-            cur_data.loc[cur_data['delta_theta'] > np.pi, 'delta_theta'] -= 2*np.pi
-
-            delta_theta_list.append(cur_data)
-
-        nonzero_im_df = pd.concat(delta_theta_list, ignore_index=True)
-
         # Get bins to average over each radius
         radius_bins = np.linspace(radius_start, radius_end, num=num_bins)
         mid_radius_bins = (radius_bins[:-1] + radius_bins[1:])/2.
@@ -851,9 +827,26 @@ class Image_Set(object):
         return filtered_boundaries, mid_radius_bins
 
     def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
+        labeled_domains = self.labeled_domains
+        unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
+
+        cur_im_df = self.image_coordinate_df
+        cur_im_df['domain_label'] = labeled_domains.ravel()
+        cur_im_df['unique_label'] = unique_labels.ravel()
+
+        # Only focus on the domains.
+        nonzero_im_df = cur_im_df.loc[cur_im_df['domain_label'] != 0, :]
+
+        # Get bins to average over each radius
+        radius_bins = np.linspace(radius_start, radius_end, num=num_bins)
+        mid_radius_bins = (radius_bins[:-1] + radius_bins[1:])/2.
+
+        bin_cut = pd.cut(nonzero_im_df.radius_scaled, radius_bins, labels=mid_radius_bins)
+        # Filter boundaries to a single point at each radius
+        filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
+        filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
 
         # Loop over domains, extract desired info
-        filtered_boundaries, mid_radius_bins = self.get_edge_df(radius_start=radius_start, radius_end=radius_end, num_bins=num_bins)
         domain_df = filtered_boundaries.reset_index().set_index(['domain_label'])
         delta_df_list = []
 
