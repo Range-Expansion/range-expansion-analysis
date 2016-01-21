@@ -301,9 +301,10 @@ class Range_Expansion_Experiment(object):
         for index in indices_to_use:
             cur_imset = self.image_set_list[index]
             df = cur_imset.get_domain_dfs(**kwargs)
-            df['imset_index'] = index
+            if df is not None:
+                df['imset_index'] = index
 
-            df_list.append(df)
+                df_list.append(df)
         return pd.concat(df_list)
 
     def get_edge_dfs(self, indices_to_use, **kwargs):
@@ -881,8 +882,9 @@ class Image_Set(object):
             for n, d in gb:
                 df_list.append(d.set_index('radius_scaled'))
 
-            assert len(df_list) == 2, 'There should only be two edges per domain...I am getting ' + str(len(df_list))
-
+            if len(df_list) != 2:
+                print 'There should only be two edges per domain...I am getting ' + str(len(df_list))
+                continue
             # Get deltaTheta at each radius from the distance between the two domains.
             delta_df = df_list[0] - df_list[1]
             delta_df['deltaX'] = np.sqrt(delta_df['r']**2 + delta_df['c']**2)
@@ -905,6 +907,10 @@ class Image_Set(object):
             max_surviving_radius = np.max(delta_df['radius_scaled'])
             delta_df['max_radius'] = max_surviving_radius
             # Get deltaTheta at the max surviving radius
+            if delta_df.shape[0] == 0:
+                print 'Domain df has length zero...wtf. Skipping'
+                continue
+
             final_deltaTheta = delta_df.iloc[-1]['delta_theta']
 
 
@@ -937,6 +943,10 @@ class Image_Set(object):
             delta_df['log_R_div_Ro'] = np.log(delta_df['radius_scaled']/delta_df['initial_radius'])
 
             delta_df_list.append(delta_df)
+
+        if len(delta_df_list) == 0:
+            print 'No domains found...'
+            return None
 
         combined_domains = pd.concat(delta_df_list)
         return combined_domains
