@@ -851,6 +851,7 @@ class Image_Set(object):
         return combined_domains
 
     def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
+        """Generally used to take the average of surviving domains."""
         labeled_domains = self.labeled_domains
         unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
 
@@ -900,45 +901,30 @@ class Image_Set(object):
 
             delta_df.dropna(inplace=True)
 
-            # Get the maximum surviving radius
-            initial_radius = np.min(delta_df['radius_scaled'])
-
-            delta_df['initial_radius'] = initial_radius
-            max_surviving_radius = np.max(delta_df['radius_scaled'])
-            delta_df['max_radius'] = max_surviving_radius
             # Get deltaTheta at the max surviving radius
             if delta_df.shape[0] == 0:
                 print 'Domain df has length zero...wtf. Skipping'
                 continue
 
-            final_deltaTheta = delta_df.iloc[-1]['delta_theta']
+            # Get the initial radius
+            initial_radius = np.min(delta_df['radius_scaled'])
+            delta_df['initial_radius'] = initial_radius
+            # Get the maximum radius too
+            max_radius = np.max(delta_df['radius_scaled'])
+            delta_df['max_radius'] = max_radius
 
+            delta_df['domain_length'] = max_radius - initial_radius
 
             # Get the initial angle
             initial_theta = delta_df['delta_theta'].iloc[0]
             delta_df['theta_o'] = initial_theta
             delta_df['theta_minus_theta_o'] = delta_df['delta_theta'] - delta_df['theta_o']
 
-            # Based on the desired bins, if the domain went extinct, return
-            # zero delta_theta. So, we probably have to reindex...
-
-            delta_df.set_index('radius_scaled', inplace=True)
-            delta_df = delta_df.reindex(index=mid_radius_bins)
-            delta_df.reset_index(inplace=True)
-
-            # If the domain goest extinct, set variables appropriately. Extinction is defined by a cutoff theta at the end.
-            went_extinct = False
-            if final_deltaTheta < theta_death:
-               went_extinct = True
-               delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['delta_theta', 'deltaX', 'deltaX_scaled']] = 0
-               delta_df.loc[delta_df['radius_scaled'] >= max_surviving_radius, ['theta_minus_theta_o']] = -initial_theta
-
-            delta_df['theta_o'] = initial_theta
-            delta_df['initial_radius'] = initial_radius
-            delta_df['max_radius'] = max_surviving_radius
+            # Record what the mother domain was
             delta_df['domain_label'] = cur_domain
 
-            # Now calculate the difference in theta...I chose poor variable names
+            # Based on the desired bins, if the domain went extinct, return
+            # zero delta_theta. So, we probably have to reindex...
 
             delta_df['log_R_div_Ro'] = np.log(delta_df['radius_scaled']/delta_df['initial_radius'])
 
