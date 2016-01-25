@@ -829,6 +829,10 @@ class Image_Set(object):
             initial_radius = np.min(cur_edge_data['radius_scaled'])
             cur_edge_data['initial_radius'] = initial_radius
 
+            # Get the maximum radius to do filtering by domain size
+            cur_edge_data['max_radius'] = np.max(cur_edge_data['radius_scaled'])
+            cur_edge_data['edge_length'] = cur_edge_data['max_radius'] - cur_edge_data['initial_radius']
+
             initial_radius_row = cur_edge_data.loc[cur_edge_data['radius_scaled'] == initial_radius, :]
             theta_o = initial_radius_row['theta']
             cur_edge_data['theta_o'] = theta_o
@@ -871,6 +875,9 @@ class Image_Set(object):
         filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
         filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
 
+        # Now that we have averaged, create theta based on the average delta_r and delta_c
+        filtered_boundaries['theta'] = np.arctan2(filtered_boundaries['delta_r'], filtered_boundaries['delta_c'])
+
         # Loop over domains, extract desired info
         domain_df = filtered_boundaries.reset_index().set_index(['domain_label'])
         delta_df_list = []
@@ -888,17 +895,20 @@ class Image_Set(object):
                 continue
             # Get deltaTheta at each radius from the distance between the two domains.
             delta_df = df_list[0] - df_list[1]
-            delta_df['deltaX'] = np.sqrt(delta_df['r']**2 + delta_df['c']**2)
-            delta_df['deltaX_scaled'] = self.get_scaling() * delta_df['deltaX']
+
+            delta_df['delta_theta'] = np.abs(delta_df['theta'])
+            # Make sure the delta_theta is the one we want...i.e. always the smaller one
+            incorrect_angle = delta_df['delta_theta'] > np.pi
+            delta_df.loc[incorrect_angle, 'delta_theta'] = 2*np.pi - delta_df.loc[incorrect_angle, 'delta_theta']
+            #delta_df.loc[delta_df['delta_theta'] > np.pi, 'delta_theta'] -= 2*np.pi
+
+            # delta_theta should be positive
+            #delta_df['delta_theta'] = np.abs(delta_df['theta'])
 
             delta_df.reset_index(inplace=True)
-            # Use trig to derive how the distance between the two points relates to deltaTheta.
-            # Required as if theta changes from 2pi -> 0, bad things can happen when averaging.
-            delta_df['delta_theta'] = 2 * np.arcsin(delta_df['deltaX_scaled']/(2*delta_df['radius_scaled']))
 
             delta_df.drop(['unique_label', 'c', 'r', 'delta_r', 'delta_c', 'radius', 'radius_scaled_mean', 'theta'],
                           axis=1, inplace=True)
-
             delta_df.dropna(inplace=True)
 
             # Get deltaTheta at the max surviving radius
