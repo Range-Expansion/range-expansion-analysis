@@ -78,13 +78,15 @@ def make_x_axis_radians(unit=0.25, pi_range = np.pi):
     ax.set_xticklabels(x_label)
 
 def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None,
-                      cbar_ticks=None, ax = None):
+                      cbar_ticks=None, ax = None, plot_cbar=True, plot_legend=True):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
 
     if ax is None:
         fig, ax = ter.figure()
         fig.set_size_inches(16, 10)
+    else:
+        fig = None
 
     plt.hold(True)
 
@@ -125,14 +127,14 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
     new_ax = plt.gca()
 
     # Make a colorbar
-    if cbar_ticks is None:
-        ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
-                                     numticks=6, title='Radius (mm)')
-    else:
-        cbar = ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
-                                     numticks=6, title='Radius (mm)')
-        cbar.set_ticks(cbar_ticks)
-
+    if plot_cbar:
+        if cbar_ticks is None:
+            ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
+                                         numticks=6, title='Radius (mm)')
+        else:
+            cbar = ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
+                                         numticks=6, title='Radius (mm)')
+            cbar.set_ticks(cbar_ticks)
 
     ### Create annotations specifying the edges ####
 
@@ -146,20 +148,24 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
                         fontsize=20, color=color)
 
     plt.gca().set_aspect('equal')
-
-    plt.legend(loc='best')
+    if plot_legend:
+        plt.legend(loc='best')
 
     plt.hold(False)
 
     return fig
 
 slicer = pd.IndexSlice
-def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None):
+def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None,
+                           plot_cbar=True, plot_legend=True, ax=None):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
 
-    fig, ax = ter.figure()
-    fig.set_size_inches(16, 10)
+    if ax is None:
+        fig, ax = ter.figure()
+        fig.set_size_inches(16, 10)
+    else:
+        fig = None
 
     plt.hold(True)
 
@@ -188,8 +194,9 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
     new_ax = plt.gca()
 
     # Make a colorbar
-    ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
-                                 numticks=6, title='Radius (mm)')
+    if plot_cbar:
+        ter.heatmapping.colorbar_hack(new_ax, r_min, r_max, cmap, text_format='%.2f',
+                                     numticks=6, title='Radius (mm)')
 
     ### Create annotations specifying the edges ####
 
@@ -204,7 +211,8 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
 
     plt.gca().set_aspect('equal')
 
-    plt.legend(loc='best')
+    if plot_legend:
+        plt.legend(loc='best')
 
     plt.hold(False)
 
