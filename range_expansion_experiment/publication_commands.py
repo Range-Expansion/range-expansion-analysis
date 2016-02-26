@@ -122,7 +122,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
     plt.gca().get_yaxis().set_visible(False)
 
     plt.xlim(-.1, 1.1)
-    plt.ylim(-.07, .6)
+    plt.ylim(-.035, .95)
 
     new_ax = plt.gca()
 
@@ -147,7 +147,8 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
                         textcoords='offset points',
                         fontsize=20, color=color)
 
-    plt.gca().set_aspect('equal')
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.draw()
     if plot_legend:
         plt.legend(loc='best')
 
@@ -189,7 +190,7 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
     plt.gca().get_yaxis().set_visible(False)
 
     plt.xlim(-.1, 1.1)
-    plt.ylim(-.07, .6)
+    plt.ylim(-.035, .95)
 
     new_ax = plt.gca()
 
@@ -209,7 +210,7 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
                         textcoords='offset points',
                         fontsize=20, color=color)
 
-    plt.gca().set_aspect('equal')
+    plt.gca().set_aspect('equal', adjustable='box')
 
     if plot_legend:
         plt.legend(loc='best')
