@@ -78,7 +78,7 @@ def make_x_axis_radians(unit=0.25, pi_range = np.pi):
     ax.set_xticklabels(x_label)
 
 def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None,
-                      cbar_ticks=None, ax = None, plot_cbar=True, plot_legend=True):
+                      cbar_ticks=None, ax = None, plot_cbar=True, plot_legend=True, alpha=0.8):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
 
@@ -90,7 +90,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     plt.hold(True)
 
-    ax.boundary(color='black')
+    ax.boundary(color='black', alpha=0.5)
     ax.gridlines(color='black', multiple=0.1)
 
     fracs_rebinned, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins, average_data=False)
@@ -106,7 +106,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
         n_colors = fracs.shape[0]
         cmap = sns.cubehelix_palette(as_cmap=True, n_colors=n_colors, light=0.7, dark=.05)
 
-        ax.plot_colored_trajectory(fracs, cmap, alpha=1)
+        ax.plot_colored_trajectory(fracs, cmap, alpha=alpha, zorder=100)
         start_label = None
         finish_label = None
         if (count == len(groups) - 1):
@@ -114,7 +114,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
             finish_label = 'Finish'
 
         ax.scatter([fracs[0, :]], s=20, color='red', zorder=99999, marker='o', label=start_label)
-        ax.scatter([fracs[-1, :]], s=20, color='black', zorder=99999, marker='o', label=finish_label)
+        ax.scatter([fracs[-1, :]], s=20, color='blue', zorder=99999, marker='o', label=finish_label)
 
         count += 1
 
@@ -122,7 +122,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
     plt.gca().get_yaxis().set_visible(False)
 
     plt.xlim(-.1, 1.1)
-    plt.ylim(-.07, .93)
+    plt.ylim(-.07, .6)
 
     new_ax = plt.gca()
 
@@ -169,7 +169,7 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
 
     plt.hold(True)
 
-    ax.boundary(color='black')
+    ax.boundary(color='black', alpha=0.5)
     ax.gridlines(color='black', multiple=0.1)
 
     cur_data, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins)
@@ -178,18 +178,18 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
     n_colors = fracs.shape[0]
     cmap = sns.cubehelix_palette(as_cmap=True, n_colors=n_colors, light=0.7, dark=.05)
 
-    ax.plot_colored_trajectory(fracs, cmap, alpha=1)
+    ax.plot_colored_trajectory(fracs, cmap, alpha=1, zorder=100)
 
     start_label = 'Start'
     finish_label = 'Finish'
     ax.scatter([fracs[0, :]], s=20, color='red', zorder=99999, marker='o', label=start_label)
-    ax.scatter([fracs[-1, :]], s=20, color='black', zorder=99999, marker='o', label=finish_label)
+    ax.scatter([fracs[-1, :]], s=20, color='blue', zorder=99999, marker='o', label=finish_label)
 
     plt.gca().get_xaxis().set_visible(False)
     plt.gca().get_yaxis().set_visible(False)
 
     plt.xlim(-.1, 1.1)
-    plt.ylim(-.07, .93)
+    plt.ylim(-.07, .6)
 
     new_ax = plt.gca()
 
