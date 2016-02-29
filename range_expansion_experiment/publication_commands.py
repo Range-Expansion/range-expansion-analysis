@@ -90,7 +90,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
     plt.hold(True)
 
-    ax.boundary(color='black', alpha=0.5)
+    ax.boundary(color='black', alpha=0.4)
     ax.gridlines(color='black', multiple=0.1)
 
     fracs_rebinned, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins, average_data=False)
@@ -170,7 +170,7 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
 
     plt.hold(True)
 
-    ax.boundary(color='black', alpha=0.5)
+    ax.boundary(color='black', alpha=0.4)
     ax.gridlines(color='black', multiple=0.1)
 
     cur_data, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins)
