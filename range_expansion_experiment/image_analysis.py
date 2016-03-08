@@ -785,8 +785,8 @@ class Image_Set(object):
             if self.cache:
                 self._labeled_domains = final_labeled_domains
                 return self._labeled_domains
-        else:
-            return self._labeled_domains
+            else:
+                return final_labeled_domains
 
     @labeled_domains.setter
     def labeled_domains(self, value):
