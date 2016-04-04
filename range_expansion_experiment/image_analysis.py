@@ -810,17 +810,22 @@ class Image_Set(object):
         # Get bins to average over each radius
         radius_bins = np.linspace(radius_start, radius_end, num=num_bins)
         mid_radius_bins = (radius_bins[:-1] + radius_bins[1:])/2.
+        mid_radius_index = np.arange(len(mid_radius_bins), dtype=np.int)
 
-        bin_cut = pd.cut(nonzero_im_df.radius_scaled, radius_bins, labels=mid_radius_bins)
+        bin_cut = pd.cut(nonzero_im_df.radius_scaled, radius_bins, labels=mid_radius_index)
         # Filter boundaries to a single point at each radius
         filtered_boundaries = nonzero_im_df.groupby(['unique_label', bin_cut]).agg(np.mean)
         filtered_boundaries.rename(columns={'radius_scaled':'radius_scaled_mean'}, inplace=True)
+        #print filtered_boundaries
+        filtered_boundaries.reset_index(inplace=True)
+        filtered_boundaries.rename(columns={'radius_scaled':'radius_bin_index'}, inplace=True)
+        filtered_boundaries['radius_scaled'] = mid_radius_bins[filtered_boundaries['radius_bin_index']]
 
         # Now that we have the average delta_r and delta_c, get the new average delta_theta
         # Doing this earlier can result in disaster due to the cut in the theta plane
         filtered_boundaries['theta'] = np.arctan2(filtered_boundaries['delta_r'], filtered_boundaries['delta_c'])
 
-        edge_df = filtered_boundaries.reset_index().set_index(['unique_label']).dropna() # We don't want to deal with Nan's here
+        edge_df = filtered_boundaries.set_index(['unique_label']).dropna() # We don't want to deal with Nan's here
 
         edge_df_list= []
         for cur_edge, cur_edge_data in edge_df.groupby(level=0): # Loop over edges instead of domains
