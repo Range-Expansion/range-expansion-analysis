@@ -312,9 +312,9 @@ class Range_Expansion_Experiment(object):
         for index in indices_to_use:
             cur_imset = self.image_set_list[index]
             df = cur_imset.get_edge_df(**kwargs)
-            df['imset_index'] = index
-
-            df_list.append(df)
+            if df is not None:
+                df['imset_index'] = index
+                df_list.append(df)
         return pd.concat(df_list)
 
     def finish_setup(self, **kwargs):
@@ -855,6 +855,9 @@ class Image_Set(object):
 
             edge_df_list.append(cur_edge_data)
 
+        if len(edge_df_list) == 0:
+            print 'No edges detected in image' , self.image_name
+            return None
         combined_domains = pd.concat(edge_df_list)
         combined_domains.reset_index(inplace=True)
         return combined_domains
