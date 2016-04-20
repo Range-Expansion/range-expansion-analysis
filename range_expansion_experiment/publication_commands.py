@@ -78,13 +78,13 @@ def make_x_axis_radians(unit=0.25, pi_range = np.pi):
     ax.set_xticklabels(x_label)
 
 def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None,
-                      cbar_ticks=None, ax = None, plot_cbar=True, plot_legend=True, alpha=0.8):
+                      cbar_ticks=None, ax = None, plot_cbar=True, plot_legend=True, alpha=0.8, textfontsize=20):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
 
     if ax is None:
         fig, ax = ter.figure()
-        fig.set_size_inches(16, 10)
+        #fig.set_size_inches(16, 10)
     else:
         fig = None
 
@@ -145,7 +145,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
         new_ax.annotate(label, xy=pos, xytext=offset, ha='left',
                         va='top', xycoords='data',
                         textcoords='offset points',
-                        fontsize=20, color=color)
+                        fontsize=textfontsize, color=color)
 
     plt.gca().set_aspect('equal', adjustable='box')
     plt.draw()
@@ -158,20 +158,20 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
 
 slicer = pd.IndexSlice
 def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None,
-                           plot_cbar=True, plot_legend=True, ax=None):
+                           plot_cbar=True, plot_legend=True, ax=None, textfontsize=20, linewidth=1.):
     if offset_list is None:
         offset_list = [[-15, -7], [-30, 20], [-30, -7]]
 
     if ax is None:
         fig, ax = ter.figure()
-        fig.set_size_inches(16, 10)
+        #fig.set_size_inches(16, 10)
     else:
         fig = None
 
     plt.hold(True)
 
     ax.boundary(color='black', alpha=0.4)
-    ax.gridlines(color='black', multiple=0.1)
+    ax.gridlines(color='black', multiple=0.1, linewidth=linewidth)
 
     cur_data, bins = group_fracs(input_fracs, min_radius=r_min, max_radius=r_max, num_bins=num_bins)
     fracs = cur_data.loc[:, slicer['ch0':'ch2', 'mean']].values
@@ -208,7 +208,7 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
         new_ax.annotate(label, xy=pos, xytext=offset, ha='left',
                         va='top', xycoords='data',
                         textcoords='offset points',
-                        fontsize=20, color=color)
+                        fontsize=textfontsize, color=color)
 
     plt.gca().set_aspect('equal', adjustable='box')
 
