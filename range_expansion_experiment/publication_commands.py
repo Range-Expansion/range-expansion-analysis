@@ -68,11 +68,11 @@ def get_Fij_at_each_r(title, num_colors, base_directory='./'):
 
     return Fij_at_each_r
 
-def make_x_axis_radians(unit=0.25, pi_range = np.pi):
+def make_x_axis_radians(unit=0.25, pi_range=np.pi, num_digits=2):
     const = pi_range / np.pi
     x_tick = np.arange(-const, const+unit, unit)
 
-    x_label = [r"$" + format(r, '.2g')+ r"\pi$" for r in x_tick]
+    x_label = [r"$" + format(r, '.'+str(num_digits)+'g')+ r"\pi$" for r in x_tick]
     ax = plt.gca()
     ax.set_xticks(x_tick*np.pi)
     ax.set_xticklabels(x_label)
@@ -87,8 +87,6 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
         #fig.set_size_inches(16, 10)
     else:
         fig = None
-
-    plt.hold(True)
 
     ax.boundary(color='black', alpha=0.4)
     ax.gridlines(color='black', multiple=0.1)
@@ -152,9 +150,7 @@ def make_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10,
     if plot_legend:
         plt.legend(loc='best')
 
-    plt.hold(False)
-
-    return fig
+    return ax
 
 slicer = pd.IndexSlice
 def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_max=10, num_bins=200, offset_list=None,
@@ -167,8 +163,6 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
         #fig.set_size_inches(16, 10)
     else:
         fig = None
-
-    plt.hold(True)
 
     ax.boundary(color='black', alpha=0.4)
     ax.gridlines(color='black', multiple=0.1, linewidth=linewidth)
@@ -215,9 +209,7 @@ def make_mean_ternary_plot(input_fracs, label_list, color_list,  r_min=3.5, r_ma
     if plot_legend:
         plt.legend(loc='best')
 
-    plt.hold(False)
-
-    return fig
+    return ax
 
 def group_fracs(fracs, min_radius=2.5, max_radius=10., num_bins=200, average_data=True):
 
