@@ -765,7 +765,7 @@ class Image_Set(object):
         '''Each domain has the same label.'''
         if self._labeled_domains is None:
             try:
-                temp_domains = ski.io.imread(self.path_dict['labeled_domains'] + self.image_name, plugin='tifffile')
+                temp_domains = ti.imread(self.path_dict['labeled_domains'] + self.image_name)
                 # Transform the colored domains into greyscale
                 temp_domains_color = np.rollaxis(temp_domains, 0, 3)
                 grey_domains = ski.color.rgb2gray(temp_domains_color)
@@ -961,7 +961,7 @@ class Image_Set(object):
         '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
         if self._brightfield_mask is None:
             try:
-                temp_mask = ski.io.imread(self.path_dict['circle_folder'] + self.image_name, plugin='tifffile') > 0
+                temp_mask = ti.imread(self.path_dict['circle_folder'] + self.image_name) > 0
             except IOError:
                 print 'No circle mask found!'
                 return None
@@ -987,7 +987,7 @@ class Image_Set(object):
         '''Returns the circle mask of brightfield. Takes a long time to run, so cache if possible.'''
         if self._homeland_mask is None:
             try:
-                temp_mask = ski.io.imread(self.path_dict['homeland_folder'] + self.image_name, plugin='tifffile') > 0
+                temp_mask = ti.imread(self.path_dict['homeland_folder'] + self.image_name) > 0
             except IOError:
                 print 'No homeland mask found!'
                 return None
@@ -1035,7 +1035,7 @@ class Image_Set(object):
         '''Returns the edge binary image.'''
         if self._edges_mask is None:
             try:
-                temp_mask = ski.io.imread(self.path_dict['edges_folder'] + self.image_name, plugin='tifffile') > 0
+                temp_mask = ti.imread(self.path_dict['edges_folder'] + self.image_name) > 0
             except IOError:
                 print 'No edges mask found!'
                 return None
@@ -1061,7 +1061,7 @@ class Image_Set(object):
         '''Returns the edge binary image.'''
         if self._doctored_edges_mask is None:
             try:
-                temp_mask = ski.io.imread(self.path_dict['doctored_edges_folder'] + self.image_name, plugin='tifffile') > 0
+                temp_mask = ti.imread(self.path_dict['doctored_edges_folder'] + self.image_name) > 0
             except IOError:
                 print 'No doctored edges mask found!'
                 return None
@@ -1087,7 +1087,7 @@ class Image_Set(object):
         '''Returns the mask of each channel.'''
         if self._fluorescent_mask is None:
             try:
-                temp_mask = ski.io.imread(self.path_dict['masks_folder'] + self.image_name, plugin='tifffile') > 0
+                temp_mask = ti.imread(self.path_dict['masks_folder'] + self.image_name) > 0
             except IOError:
                 print 'No channel masks found!'
                 return None
@@ -1129,7 +1129,7 @@ class Image_Set(object):
         '''Returns the original image.'''
         if self._image is None:
             try:
-                temp_image= ski.io.imread(self.path_dict['tif_folder'] + self.image_name, plugin='tifffile')
+                temp_image= ti.imread(self.path_dict['tif_folder'] + self.image_name)
             except IOError:
                 print 'No original image found! This is weird...'
                 return None
