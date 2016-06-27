@@ -767,8 +767,7 @@ class Image_Set(object):
             try:
                 temp_domains = ti.imread(self.path_dict['labeled_domains'] + self.image_name)
                 # Transform the colored domains into greyscale
-                temp_domains_color = np.rollaxis(temp_domains, 0, 3)
-                grey_domains = ski.color.rgb2gray(temp_domains_color)
+                grey_domains = ski.color.rgb2gray(temp_domains)
 
                 # Transform the greyscale labels into unique binary labels
                 unique_greys = np.unique(grey_domains)
@@ -868,6 +867,7 @@ class Image_Set(object):
         unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
 
         cur_im_df = self.image_coordinate_df
+
         cur_im_df['domain_label'] = labeled_domains.ravel()
         cur_im_df['unique_label'] = unique_labels.ravel()
 
