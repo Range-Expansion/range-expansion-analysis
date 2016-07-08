@@ -863,6 +863,8 @@ class Image_Set(object):
 
     def get_domain_dfs(self, radius_start=0, radius_end=11, num_bins=300, theta_death=0.1):
         """Generally used to take the average of surviving domains."""
+        print self.image_name
+
         labeled_domains = self.labeled_domains
         unique_labels = ski.measure.label(labeled_domains, neighbors=8, background=0) + 1 # Labels should go from 1 to infinity.
 
