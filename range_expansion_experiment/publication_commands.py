@@ -68,11 +68,11 @@ def get_Fij_at_each_r(title, num_colors, base_directory='./'):
 
     return Fij_at_each_r
 
-def make_x_axis_radians(unit=0.25, pi_range = np.pi):
+def make_x_axis_radians(unit=0.25, pi_range = np.pi, num_digits=2):
     const = pi_range / np.pi
     x_tick = np.arange(-const, const+unit, unit)
 
-    x_label = [r"$" + format(r, '.2g')+ r"\pi$" for r in x_tick]
+    x_label = [r"$" + format(r, '.' + str(num_digits) + 'g')+ r"\pi$" for r in x_tick]
     ax = plt.gca()
     ax.set_xticks(x_tick*np.pi)
     ax.set_xticklabels(x_label)
