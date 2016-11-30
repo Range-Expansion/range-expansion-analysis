@@ -847,7 +847,7 @@ class Image_Set(object):
             cur_edge_data.loc[cur_edge_data['delta_theta'] < -np.pi, 'delta_theta'] += 2*np.pi
             cur_edge_data.loc[cur_edge_data['delta_theta'] > np.pi, 'delta_theta'] -= 2*np.pi
 
-            cur_edge_data.drop(['domain_label', 'c', 'r', 'delta_r', 'delta_c', 'radius', 'radius_scaled_mean'],
+            cur_edge_data.drop(['c', 'r', 'delta_r', 'delta_c', 'radius', 'radius_scaled_mean'],
                           axis=1, inplace=True)
 
             cur_edge_data.dropna(inplace=True)
