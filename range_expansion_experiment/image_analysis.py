@@ -303,8 +303,8 @@ class Range_Expansion_Experiment(object):
             df = cur_imset.get_domain_dfs(**kwargs)
             if df is not None:
                 df['imset_index'] = index
-
                 df_list.append(df)
+
         return pd.concat(df_list)
 
     def get_edge_dfs(self, indices_to_use, **kwargs):
@@ -684,7 +684,7 @@ class Range_Expansion_Experiment(object):
 class Image_Set(object):
     '''Homeland radius is used to get the center of the expansion now.'''
     def __init__(self, image_name, path_dict, cache=True, bigger_than_image=False, black_strain=False,
-                 set_black_channel=None):
+                 set_black_channel=None, set_strains_as_neutral=None):
         '''If cache is passed, a ton of memory is used but things will go MUCH faster.'''
         self.image_name = image_name
         self.path_dict = path_dict
@@ -725,6 +725,7 @@ class Image_Set(object):
 
         self.black_strain = black_strain
         self.set_black_channel = set_black_channel
+        self.set_strains_as_neutral = set_strains_as_neutral
 
     def finish_setup(self):
         # Initialize rest of required stuff
@@ -1093,6 +1094,7 @@ class Image_Set(object):
             except IOError:
                 print 'No channel masks found!'
                 return None
+            ### ACCOUNT FOR BLACK STRAINS ####
             if self.set_black_channel is not None:
                 indices = np.ones(temp_mask.shape[0]) > 0
                 indices[self.set_black_channel] = False
@@ -1108,7 +1110,18 @@ class Image_Set(object):
                     insert_location = temp_mask.shape[0]
 
                 temp_mask = np.insert(temp_mask, insert_location, black_channel, axis=0)
+            ### ACCOUNT FOR STRAINS TO BE TREATED AS NEUTRAL ###
+            if self.set_strains_as_neutral is not None:
+                # Treat the channels specified in "set_strains_as_neutral" as neutral.
+                combined_channel = np.zeros_like(temp_mask)
+                combined_channel = combined_channel[0]
+                for cur_strain in self.set_strains_as_neutral:
+                    combined_channel += temp_mask[cur_strain]
+                combined_channel = combined_channel > 0
+                temp_mask = np.delete(temp_mask, self.set_strains_as_neutral, axis=0)
+                temp_mask = np.insert(temp_mask, 0, combined_channel, axis=0)
 
+            ### DEAL WITH CACHING ###
             if self.cache:
                 self._fluorescent_mask = temp_mask
                 return self._fluorescent_mask
