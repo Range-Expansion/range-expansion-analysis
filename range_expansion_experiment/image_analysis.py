@@ -1478,19 +1478,31 @@ class Image_Set(object):
 
     def get_max_radius(self):
         cur_brightfield_mask = self.brightfield_mask
-        diameter_list = []
-        for i in range(cur_brightfield_mask.shape[0]):
-            cur_image = cur_brightfield_mask[i, :, :]
+
+        if len(cur_brightfield_mask.shape) > 1: # We measured the radius multiple times
+            diameter_list = []
+            for i in range(cur_brightfield_mask.shape[0]):
+                cur_image = cur_brightfield_mask[i, :, :]
+                # Find maximum diameter
+                r, c = np.where(cur_image)
+                diameter_r = np.float(r.max() - r.min())
+                diameter_c = np.float(c.max() - c.min())
+                # We need both of these checks in case the expansion is bigger than the image in one dimension...
+                desired_diameter = max(diameter_r, diameter_c)
+                diameter_list.append(desired_diameter)
+            diameter_list = np.array(diameter_list)
+            # Now find the mean radius
+            max_radius = int(np.floor(diameter_list.mean()/2))
+
+        else: # We only measured the radius once
+            cur_image = cur_brightfield_mask
             # Find maximum diameter
             r, c = np.where(cur_image)
             diameter_r = np.float(r.max() - r.min())
             diameter_c = np.float(c.max() - c.min())
             # We need both of these checks in case the expansion is bigger than the image in one dimension...
-            desired_diameter = max(diameter_r, diameter_c)
-            diameter_list.append(desired_diameter)
-        diameter_list = np.array(diameter_list)
-        # Now find the mean radius
-        max_radius = int(np.floor(diameter_list.mean()/2))
+            max_radius = max(diameter_r, diameter_c)
+
         return max_radius
 
     def get_homeland_radius(self):
