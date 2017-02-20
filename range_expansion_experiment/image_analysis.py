@@ -1224,8 +1224,9 @@ class Image_Set(object):
     def get_image_coordinate_df(self):
         """Returns image coordinates in r and theta. Uses the center of the brightfield mask
         as the origin."""
-        rows = np.arange(0, self.image.shape[1])
-        columns = np.arange(0, self.image.shape[2])
+        dimension = len(self.image.shape)
+        rows = np.arange(0, self.image.shape[dimension - 2])
+        columns = np.arange(0, self.image.shape[dimension - 1])
         rmesh, cmesh = np.meshgrid(rows, columns, indexing='ij')
 
         r_ravel = rmesh.ravel()
