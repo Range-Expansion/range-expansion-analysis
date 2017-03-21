@@ -70,10 +70,9 @@ class Publication_Experiment(object):
 
     def write_nonlocal_quantity_to_disk(self, quantity_str, i= None, j=None):
         # If caching, initialize the experiment once and go from there.
-
         if self.cache:
             for q in self.complete_masks:
-                    self.experiment.image_set_list[q].finish_setup()
+                self.experiment.image_set_list[q].finish_setup()
 
         for r, num_theta_bins in zip(self.hetero_r_list, self.num_theta_bins_list):
             print r
@@ -87,7 +86,6 @@ class Publication_Experiment(object):
                 os.makedirs(folder_name)
 
             quantity_info = {}
-
             quantity_info['r'] = r
             quantity_info['num_theta_bins'] = num_theta_bins
 
@@ -201,12 +199,13 @@ class Publication_Experiment(object):
                     print 'Calculating & writing F' +str(i) + str(j)
                     self.write_nonlocal_quantity_to_disk('Fij', i=i, j=j)
 
-        print 'Calculating & writing annihilations & coalescences'
-        self.write_annih_coal_to_disk()
         print 'Calculating & writing trajectories'
         self.write_fraction_trajectories_to_disk()
         print 'Calculating & writing domains'
         self.write_domain_sizes_to_disk()
+
+        print 'Calculating & writing annihilations & coalescences'
+        self.write_annih_coal_to_disk()
 
     #### Importing Methods #####
     def import_files_in_folder(self, quantity, i=None, j=None):
@@ -594,14 +593,17 @@ class Range_Expansion_Experiment(object):
         df_list = []
         standard_theta_bins = np.linspace(-np.pi, np.pi, num_theta_bins)
         midbins = (standard_theta_bins[1:] + standard_theta_bins[0:-1])/2.
-
         for im_set_index in im_sets_to_use:
+            #print im_set_index
             cur_im_set = self.image_set_list[im_set_index]
             if initialize_and_clear_memory:
                 cur_im_set.finish_setup()
             cur_scaling = cur_im_set.get_scaling()
 
             desired_r = np.around(r_scaled / cur_scaling)
+            if desired_r > 10**5:
+                print 'Something horrible has happened with the scaling, be careful!'
+                print 'desired_r is:' , desired_r
             returned_dict, quantity_shortname = None, None
             if nonlocal_quantity == 'hetero':
                 returned_dict = cur_im_set.get_nonlocal_hetero(desired_r, delta_x = delta_x,
@@ -1091,6 +1093,9 @@ class Image_Set(object):
         if self._fluorescent_mask is None:
             try:
                 temp_mask = ti.imread(self.path_dict['masks_folder'] + self.image_name) > 0
+                # If the mask has only one channel, there is a black strain...its dimensionality needs to be increased.
+                if len(temp_mask.shape) == 2:
+                    temp_mask = np.array([temp_mask])
             except IOError:
                 print 'No channel masks found!'
                 return None
@@ -1541,6 +1546,7 @@ class Image_Set(object):
 
     def get_nonlocal_quantity(self, quantity, r, delta_x=1.5, i=None, j=None, calculate_overlap=False):
         """Calculates nonlocal information based on the quantity keyword."""
+
         cur_frac_df = self.frac_df
 
         theta_df_list, theta_bins = self.bin_theta_at_r_df(cur_frac_df, r, delta_x = delta_x)
@@ -1646,10 +1652,13 @@ class Image_Set(object):
             #TODO: delta_x should probably be defined as a constant in this package
             delta_x = 1.5
             overlap_at_radius = overlap_df.query('(radius >= @r - @delta_x/2.) & (radius < @r + @delta_x/2.)')
-            fraction_overlap = float(np.sum(overlap_at_radius['overlap']))/overlap_at_radius.shape[0]
-            # Get the fraction in radians
-            average_angular_overlap = fraction_overlap * 2*np.pi
-            dict_to_return['average_overlap'] = average_angular_overlap
+            if overlap_at_radius.shape[0] != 0:
+                fraction_overlap = float(np.sum(overlap_at_radius['overlap']))/overlap_at_radius.shape[0]
+                # Get the fraction in radians
+                average_angular_overlap = fraction_overlap * 2*np.pi
+                dict_to_return['average_overlap'] = average_angular_overlap
+            else:
+                dict_to_return['average_overlap'] = 0.0
         return dict_to_return
 
     def get_nonlocal_hetero(self, r, delta_x = 1.5, **kwargs):
