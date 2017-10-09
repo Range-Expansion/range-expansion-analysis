@@ -789,6 +789,8 @@ class Image_Set(object):
                 return self._labeled_domains
             else:
                 return final_labeled_domains
+        else:
+            return self._labeled_domains
 
     @labeled_domains.setter
     def labeled_domains(self, value):
