@@ -932,6 +932,7 @@ class Image_Set(object):
                 continue
 
             # Get the initial radius
+	    delta_df['radius_scaled'] = pd.to_numeric(delta_df['radius_scaled'])
             initial_radius = np.min(delta_df['radius_scaled'])
             delta_df['initial_radius'] = initial_radius
             # Get the maximum radius too
